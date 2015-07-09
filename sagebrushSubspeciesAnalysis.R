@@ -1,3 +1,10 @@
+#
+# Big sagebrush subspecies SDMs 
+# A custom implementation of random forest and GLMs, along with spatial aggregation of records
+#
+# Author: Kyle Taylor (kyle.taylor@uwyo.edu)
+#
+
 require(raster)
 require(spatstat)
 require(rgdal)
@@ -9,6 +16,7 @@ HOME <- Sys.getenv("HOME")
 # spatialPointsToPPP()
 # Convert a standard SpatialPoints* object to a ppp for use in spatstat
 #
+
 spatialPointsToPPP <- function(x,extentMultiplier=1.1){
   # default includes
   require(rgdal)
