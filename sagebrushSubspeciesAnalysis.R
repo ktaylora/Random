@@ -79,7 +79,6 @@ buildSDMs_ssp <- function(p_focal){
   samplingGrid <- crop(raster(res=intersection),boundaries)      
     samplingMatrix <- matrix(c(0,1), nrow=nrow(samplingGrid), ncol=ifelse(!(ncol(samplingGrid)%%2),ncol(samplingGrid)+1,ncol(samplingGrid)), byrow=T)
       samplingGrid <- setValues(samplingGrid,samplingMatrix[1:nrow(samplingGrid),1:ncol(samplingGrid)])
-
       
   # plot our records space
   dev.new(height=6,width=8)
@@ -178,6 +177,7 @@ boundaries <- readOGR(paste(HOME,"/Products/boundaries/",sep=""), "western_north
 # read-in and parse our climate variables
 climate_variables <- list.files(paste(HOME,"/Products/weather/worldclim/30_sec/bioclim",sep=""),pattern="[.]bil$", full.names=T)
   climate_variables <- raster::stack(climate_variables[grepl(climate_variables, pattern="bio_3|bio_4|bio_11|bio_15|bio_18")])
+    climate_variables <- crop(climate_variables,spTransform(boundaries,CRS(projection(climate_variables))),progress='text')
 # read-in our previously extracted SpatialPoints shapefiles indicating subspecies presence-absence from GAP
 p_vaseyana     <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis/vectors",sep=""), "vaseyana_gap_records.1",verbose=F)
 p_wyomingensis <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis/vectors",sep=""), "wyomingensis_gap_records",verbose=F)
@@ -185,5 +185,37 @@ p_tridentata   <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis
 
 # build our models
 o_vaseyana     <- buildSDMs_ssp(p_vaseyana)
+cat(" -- projecting model rasters\n")
+  r_glm_vaseyana_current <- predict(climate_variables, o_vaseyana[[3]][[1]], type='resp', progress='text')
+  r_rf_vaseyana_current  <- predict(climate_variables, o_vaseyana[[1]], type='resp', progress='text')
 o_tridentata   <- buildSDMs_ssp(p_tridentata)
+cat(" -- projecting model rasters\n")
+  r_glm_tridentata_current <- predict(climate_variables, o_tridentata[[3]][[1]], type='resp', progress='text')
+  r_rf_tridentata_current  <- predict(climate_variables, o_tridentata[[1]], type='resp', progress='text')
 o_wyomingensis <- buildSDMs_ssp(p_wyomingensis)
+cat(" -- projecting model rasters\n")
+  r_glm_wyomingensis_current <- predict(climate_variables, o_wyomingensis[[3]][[1]], type='resp', progress='text')
+  r_rf_wyomingensis_current  <- predict(climate_variables, o_wyomingensis[[1]], type='resp', progress='text')
+
+# make some raster projections
+dev.new(height=5,width=8.5)
+par(mfrow=c(1,3))
+par(mar=par()$mar/1.5)
+mask <- r_glm_tridentata_current >= o_tridentata[[4]][,4] # mask with binary image
+  plot(r_glm_tridentata_current*mask,main="ssp tridentata (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
+mask <- r_glm_wyomingensis_current >= o_wyomingensis[[4]][,4] 
+  plot(r_glm_wyomingensis_current*mask,main="ssp wyomingensis (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
+mask <- r_glm_vaseyana_current >= o_vaseyana[[4]][,4] 
+  plot(r_glm_vaseyana_current*mask,main="ssp vaseyana (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
+
+dev.new(height=5,width=8.5)
+par(mfrow=c(1,3))
+par(mar=par()$mar/1.5)
+mask <- r_rf_tridentata_current >= o_tridentata[[4]][,4] # mask with binary image
+  plot(r_rf_tridentata_current*mask,main="ssp tridentata (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+mask <- r_rf_wyomingensis_current >= o_wyomingensis[[4]][,4] 
+  plot(r_rf_wyomingensis_current*mask,main="ssp wyomingensis (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+mask <- r_rf_vaseyana_current >= o_vaseyana[[4]][,4] 
+  plot(r_rf_vaseyana_current*mask,main="ssp vaseyana (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+
+cat(" -- done\n")
