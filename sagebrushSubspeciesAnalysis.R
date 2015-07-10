@@ -39,14 +39,12 @@ spatialPointsToPPP <- function(x,extentMultiplier=1.1){
   
   return(x)
 }
-  
-#
-# buildSDMS_ssp()
-# build random forest and glms for focal sagebrush ssp
-#
 
-buildSDMs_ssp <- function(p_focal){
-  # generate pseudo-absences using an 8-degrees from presences method
+#
+# buildTrainingEvaluationSets()
+#
+buildTrainingEvaluationSets <- function(x,debug=T){
+ # generate pseudo-absences using an 8-degrees from presences method
   r_template <- raster(res=0.008333333) # consistent with the CRS and resolution of our climate data
   p_focal    <- spTransform(p_focal, CRS(projection(r_template)))
   r_focal    <- crop(r_template, extent(p_focal)*2)
@@ -67,26 +65,30 @@ buildSDMs_ssp <- function(p_focal){
   # generate a sampling grid for k-fold crossvalidation from our presence data
   x <- spatialPointsToPPP(p_focal[p_focal$resp==1,])
     x <- envelope(x, r=seq(0,0.8,0.001), fun=Jest, 1000)
-      cat(" -- values for r (degrees) that intersect with the same level of clustering observed in presence records:\n");
-      print(seq(0,0.8,0.001)[which(x$lo < x$obs)])
-      intersection <- seq(0,0.8,0.001)[which(x$lo < x$obs)][5] # treat the first 5 values as burn-in and ignore them
-      dev.new(height=6, width=8)
-        plot(x,col="white", main=paste("J-Function For ",deparse(substitute(p_focal)),sep=""))
-          grid();
-            plot(x, add=T)
-              abline(v=intersection)
-
+  cat(" -- values for r (degrees) that intersect with the same level of clustering observed in presence records:\n");
+  print(seq(0,0.8,0.001)[which(x$lo < x$obs)])
+  intersection <- seq(0,0.8,0.001)[which(x$lo < x$obs)][5] # treat the first 5 values as burn-in and ignore them
+  if(debug){
+    dev.new(height=6, width=8)
+      plot(x,col="white", main=paste("J-Function For ",deparse(substitute(p_focal)),sep=""))
+        grid();
+          plot(x, add=T)
+            abline(v=intersection)
+  }
+  
   samplingGrid <- crop(raster(res=intersection),boundaries)      
     samplingMatrix <- matrix(c(0,1), nrow=nrow(samplingGrid), ncol=ifelse(!(ncol(samplingGrid)%%2),ncol(samplingGrid)+1,ncol(samplingGrid)), byrow=T)
       samplingGrid <- setValues(samplingGrid,samplingMatrix[1:nrow(samplingGrid),1:ncol(samplingGrid)])
       
   # plot our records space
-  dev.new(height=6,width=8)
-  plot(samplingGrid, add=F, legend=F)
-  plot(abs_pts,pch=15, cex=0.5, col="red", add=T)
-  plot(p_focal[p_focal$resp==1,], col="DarkBlue", cex=0.5, pch=15,add=T)
-  plot(boundaries, add=T)
-
+  if(debug){
+    dev.new(height=6,width=8)
+    plot(samplingGrid, add=F, legend=F)
+    plot(abs_pts,pch=15, cex=0.5, col="red", add=T)
+    plot(p_focal[p_focal$resp==1,], col="DarkBlue", cex=0.5, pch=15,add=T)
+    plot(boundaries, add=T)
+  }
+  
   # extract training and evaluation data
   climate_variables <- crop(climate_variables,boundaries,progress='text')
   cat(" -- extracting climate data for model training")
@@ -108,17 +110,16 @@ buildSDMs_ssp <- function(p_focal){
     
   training <- rbind(training_presence,training_abs)@data
   evaluation <- rbind(evaluation_presences,evaluation_abs)@data
+  return(list(training,evaluation))
+}
 
-  # build and evaluate a random forest using hold-out data
-  require(randomForest)
-  m_rf <- randomForest(as.factor(resp)~., data=na.omit(training),importance=T,ntree=2500,do.trace=T)
-    test <- as.numeric(as.vector(predict(m_rf,newdata=evaluation[,2:ncol(evaluation)]))) == evaluation[,1]
-  rf_eval <- 
-    data.frame(
-                overall=sum(test,na.rm=T)/length(evaluation[,1]),
-                sensitivity=sum(test[1:max(which(evaluation$resp == 1))],na.rm=T)/length(test[1:max(which(evaluation$resp == 1))]),
-                specificity=sum(test[max(which(evaluation$resp == 1)):max(which(evaluation$resp == 0))],na.rm=T)/length(test[max(which(evaluation$resp == 1)):max(which(evaluation$resp == 0))])
-              )
+
+#
+# buildSDMS_ssp()
+# build random forest and glms for focal sagebrush ssp
+#
+
+build_GLM <- function(training,evaluation,formula=NULL,debug=F){
   # build some GLMs and evaluate the best model using hold-out data
   orders   <- expand.grid(rep(list(1:3), 5)) # all possible combinations of GLM polynomial orders (from 1->3) for each of our explanatory variables
   formulas <- list();
@@ -135,9 +136,11 @@ buildSDMs_ssp <- function(p_focal){
   };cat("\n");
 
   # Make Some Q/D GLM AIC plots
-  dev.new(height=6,width=8)
-  hist(unlist(lapply(models, FUN=AIC)),breaks=70)
-
+  if(debug){
+    dev.new(height=6,width=8)
+    hist(unlist(lapply(models, FUN=AIC)),breaks=70)
+  }
+  
   # identify which model was the best out of the series by minimizing AIC
   best  <- which(unlist(lapply(models, FUN=AIC)) == min(unlist(lapply(models, FUN=AIC))))
     m_glm <- models[best]
@@ -165,8 +168,25 @@ buildSDMs_ssp <- function(p_focal){
                   specificity=sum(test[max(which(evaluation$resp == 1)):max(which(evaluation$resp == 0))],na.rm=T)/length(test[max(which(evaluation$resp == 1)):max(which(evaluation$resp == 0))]),
                   cutoff=c
                 )  
+  return(list(m_glm,glm_eval))
+}
 
-  return(list(m_rf,rf_eval,m_glm,glm_eval))
+#
+# buildRF()
+#
+
+build_RF <- function(training,evaluation,debug=F){
+# build and evaluate a random forest using hold-out data
+  require(randomForest)
+  m_rf <- randomForest(as.factor(resp)~., data=na.omit(training),importance=T,ntree=2500,do.trace=T)
+    test <- as.numeric(as.vector(predict(m_rf,newdata=evaluation[,2:ncol(evaluation)]))) == evaluation[,1]
+  rf_eval <- 
+    data.frame(
+                overall=sum(test,na.rm=T)/length(evaluation[,1]),
+                sensitivity=sum(test[1:max(which(evaluation$resp == 1))],na.rm=T)/length(test[1:max(which(evaluation$resp == 1))]),
+                specificity=sum(test[max(which(evaluation$resp == 1)):max(which(evaluation$resp == 0))],na.rm=T)/length(test[max(which(evaluation$resp == 1)):max(which(evaluation$resp == 0))])
+              )
+  return(list(m_rf,rf_eval))
 }
 
 #
@@ -184,38 +204,47 @@ p_wyomingensis <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis
 p_tridentata   <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis/vectors",sep=""), "tridentata_gap_records",verbose=F)
 
 # build our models
-o_vaseyana     <- buildSDMs_ssp(p_vaseyana)
+o <- buildTrainingEvaluationSets(p_vaseyana,debug=T)
+  training <- o[[1]]; evaluation <- o[[2]]; rm(o)
+vaseyana_glm <- build_GLM(training,evaluation)
+vaseyana_rf  <- build_RF(training,evaluation)
+
+o <- buildTrainingEvaluationSets(p_tridentata,debug=T)
+  training <- o[[1]]; evaluation <- o[[2]]; rm(o)
+tridentata_glm <- build_GLM(training,evaluation)
+tridentata_rf  <- build_RF(training,evaluation)
+
+o <- buildTrainingEvaluationSets(p_wyomingensis,debug=T)
+  training <- o[[1]]; evaluation <- o[[2]]; rm(o)
+wyomingensis_glm <- build_GLM(training,evaluation)
+wyomingensis_rf  <- build_RF(training,evaluation)
+
 cat(" -- projecting model rasters\n")
-  r_glm_vaseyana_current <- predict(climate_variables, o_vaseyana[[3]][[1]], type='resp', progress='text')
-  r_rf_vaseyana_current  <- predict(climate_variables, o_vaseyana[[1]], type='resp', progress='text')
-o_tridentata   <- buildSDMs_ssp(p_tridentata)
+  r_glm_vaseyana_current <- predict(climate_variables, vaseyana_glm[[1]], type='resp', progress='text')
+  r_rf_vaseyana_current  <- predict(climate_variables, vaseyana_rf[[1]], type='resp', progress='text')
 cat(" -- projecting model rasters\n")
-  r_glm_tridentata_current <- predict(climate_variables, o_tridentata[[3]][[1]], type='resp', progress='text')
-  r_rf_tridentata_current  <- predict(climate_variables, o_tridentata[[1]], type='resp', progress='text')
-o_wyomingensis <- buildSDMs_ssp(p_wyomingensis)
+  r_glm_tridentata_current <- predict(climate_variables, tridentata_glm[[1]], type='resp', progress='text')
+  r_rf_tridentata_current  <- predict(climate_variables, tridentata_rf[[1]], type='resp', progress='text')
 cat(" -- projecting model rasters\n")
-  r_glm_wyomingensis_current <- predict(climate_variables, o_wyomingensis[[3]][[1]], type='resp', progress='text')
-  r_rf_wyomingensis_current  <- predict(climate_variables, o_wyomingensis[[1]], type='resp', progress='text')
+  r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm[[1]], type='resp', progress='text')
+  r_rf_wyomingensis_current  <- predict(climate_variables, wyomingensis_rf[[1]], type='resp', progress='text')
 
 # make some raster projections
 dev.new(height=5,width=8.5)
 par(mfrow=c(1,3))
 par(mar=par()$mar/1.5)
-mask <- r_glm_tridentata_current >= o_tridentata[[4]][,4] # mask with binary image
+mask <- r_glm_tridentata_current >= tridentata_glm[[2]][,4] # mask with binary image
   plot(r_glm_tridentata_current*mask,main="ssp tridentata (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
-mask <- r_glm_wyomingensis_current >= o_wyomingensis[[4]][,4] 
+mask <- r_glm_wyomingensis_current >= wyomingensis_glm[[2]][,4] 
   plot(r_glm_wyomingensis_current*mask,main="ssp wyomingensis (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
-mask <- r_glm_vaseyana_current >= o_vaseyana[[4]][,4] 
+mask <- r_glm_vaseyana_current >= vaseyana_glm[[2]][,4] 
   plot(r_glm_vaseyana_current*mask,main="ssp vaseyana (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
 
 dev.new(height=5,width=8.5)
 par(mfrow=c(1,3))
 par(mar=par()$mar/1.5)
-mask <- r_rf_tridentata_current >= o_tridentata[[4]][,4] # mask with binary image
-  plot(r_rf_tridentata_current*mask,main="ssp tridentata (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
-mask <- r_rf_wyomingensis_current >= o_wyomingensis[[4]][,4] 
-  plot(r_rf_wyomingensis_current*mask,main="ssp wyomingensis (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
-mask <- r_rf_vaseyana_current >= o_vaseyana[[4]][,4] 
-  plot(r_rf_vaseyana_current*mask,main="ssp vaseyana (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+  plot(r_rf_tridentata_current,main="ssp tridentata (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+  plot(r_rf_wyomingensis_current,main="ssp wyomingensis (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+  plot(r_rf_vaseyana_current,main="ssp vaseyana (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
 
 cat(" -- done\n")
