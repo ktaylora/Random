@@ -68,6 +68,7 @@ buildTrainingEvaluationSets <- function(p_focal, type="spatially-uniform", debug
   
   ## implement a spatially uniform split?
   if(grepl(type,pattern="uniform")){
+    cat(" -- performing spatial uniform sampling\n")
     x <- spatialPointsToPPP(p_focal[p_focal$resp==1,])
       x <- envelope(x, r=seq(0,0.8,0.001), fun=Jest, 1000)
     cat(" -- values for r (degrees) that intersect with the same level of clustering observed in presence records:\n");
@@ -116,25 +117,27 @@ buildTrainingEvaluationSets <- function(p_focal, type="spatially-uniform", debug
 
   ## implement the longitudinal strips of Bahn, V., and B. J. McGill. 2013?
   } else if(grepl(type,pattern="longitudinal")){
+    cat(" -- performing longitudinal strip sampling\n")
     # identify the longitudinal quantiles or our presence records
     lon_quantiles <- as.vector(quantile(p_focal[p_focal$resp==1,]@coords[,1],p=c(0.25,0.5,0.75)))
-    training_presence <- p_focal[p_focal[p_focal$resp==1,]@coords[,1] < lon_quantiles[1],] # 1st quantile
+    presence <- p_focal[p_focal$resp == 1,];
+       training_presence <- presence[presence@coords[,1] < lon_quantiles[1],] # 1st quantile
       training_presence <- rbind(training_presence,
-                        p_focal[p_focal[p_focal$resp==1,]@coords[,1] > lon_quantiles[2] & # 3rd quantile
-                                p_focal[p_focal$resp==1,]@coords[,1] < lon_quantiles[3],]) 
+                        presence[precence@coords[,1] > lon_quantiles[2] & # 3rd quantile
+                                 presence@coords[,1] < lon_quantiles[3],]) 
     training_abs <- abs_pts[abs_pts@coords[,1] < lon_quantiles[1],] # 1st quantile
       training_abs <- rbind(training_abs,
                             abs_pts[abs_pts@coords[,1] > lon_quantiles[2] & # 3rd quantile
                                     abs_pts@coords[,1] < lon_quantiles[3],]) 
 
-    evaluation_presence <- p_focal[p_focal[p_focal$resp==1,]@coords[,1] > lon_quantiles[1] & # 2nd quantile
-                                   p_focal[p_focal$resp==1,]@coords[,1] < lon_quantiles[2],]
+    evaluation_presence <- presence[presence@coords[,1] > lon_quantiles[1] & # 2nd quantile
+                                   presence@coords[,1] < lon_quantiles[2],]
       evaluation_presence <- rbind(evaluation_presence,
-                                   p_focal[p_focal[p_focal$resp==1,]@coords[,1] > lon_quantiles[3],]) # 4th quantile
+                                   presence[presence@coords[,1] > lon_quantiles[3],]) # 4th quantile
     evaluation_abs <- abs_pts[abs_pts@coords[,1] > lon_quantiles[1] & # 2nd quantile
                               abs_pts@coords[,1] < lon_quantiles[2],]
       evaluation_abs <- rbind(evaluation_abs,
-                                   abs_pts@coords[,1] > lon_quantiles[3],]) # 4th quantile
+                              abs_pts[abs_pts@coords[,1] > lon_quantiles[3],]) # 4th quantile
     # extract training and evaluation data
     climate_variables <- crop(climate_variables,boundaries,progress='text')
     cat(" -- extracting climate data for model training")
@@ -147,8 +150,8 @@ buildTrainingEvaluationSets <- function(p_focal, type="spatially-uniform", debug
     evaluation_abs@data <- data.frame(resp=rep(0,nrow(evaluation_abs@data)))
       evaluation_abs@data <- cbind(evaluation_abs@data,extract(climate_variables,evaluation_abs))
       
-    training   <- rbind(training_presence,training_abs)@data
-    evaluation <- rbind(evaluation_presence,evaluation_abs)@data
+    training   <- rbind(training_presence,training_abs)
+    evaluation <- rbind(evaluation_presence,evaluation_abs)
   }
 
   return(list(training,evaluation))
@@ -248,47 +251,47 @@ p_wyomingensis <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis
 p_tridentata   <- readOGR(paste(HOME,"/Products/uw/big_sagebrush_subspp_analysis/vectors",sep=""), "tridentata_gap_records",verbose=F)
 
 # build our models
-o <- buildTrainingEvaluationSets(p_vaseyana,debug=T)
-  training <- o[[1]]; evaluation <- o[[2]]; rm(o)
-vaseyana_glm <- build_GLM(training,evaluation)
-vaseyana_rf  <- build_RF(training,evaluation)
+o <- buildTrainingEvaluationSets(p_vaseyana,type="longitudinal",debug=T)
+#   training <- o[[1]]; evaluation <- o[[2]]; rm(o)
+# vaseyana_glm <- build_GLM(training,evaluation)
+# vaseyana_rf  <- build_RF(training,evaluation)
 
-o <- buildTrainingEvaluationSets(p_tridentata,debug=T)
-  training <- o[[1]]; evaluation <- o[[2]]; rm(o)
-tridentata_glm <- build_GLM(training,evaluation)
-tridentata_rf  <- build_RF(training,evaluation)
+# o <- buildTrainingEvaluationSets(p_tridentata,type="longitudinal",debug=T)
+#   training <- o[[1]]; evaluation <- o[[2]]; rm(o)
+# tridentata_glm <- build_GLM(training,evaluation)
+# tridentata_rf  <- build_RF(training,evaluation)
 
-o <- buildTrainingEvaluationSets(p_wyomingensis,debug=T)
-  training <- o[[1]]; evaluation <- o[[2]]; rm(o)
-wyomingensis_glm <- build_GLM(training,evaluation)
-wyomingensis_rf  <- build_RF(training,evaluation)
+# o <- buildTrainingEvaluationSets(p_wyomingensis,type="longitudinal",debug=T)
+#   training <- o[[1]]; evaluation <- o[[2]]; rm(o)
+# wyomingensis_glm <- build_GLM(training,evaluation)
+# wyomingensis_rf  <- build_RF(training,evaluation)
 
-cat(" -- projecting model rasters\n")
-  r_glm_vaseyana_current <- predict(climate_variables, vaseyana_glm[[1]][[1]], type='resp', progress='text')
-  r_rf_vaseyana_current  <- predict(climate_variables, vaseyana_rf[[1]][[1]], type='resp', progress='text')
-cat(" -- projecting model rasters\n")
-  r_glm_tridentata_current <- predict(climate_variables, tridentata_glm[[1]][[1]], type='resp', progress='text')
-  r_rf_tridentata_current  <- predict(climate_variables, tridentata_rf[[1]][[1]], type='resp', progress='text')
-cat(" -- projecting model rasters\n")
-  r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm[[1]][[1]], type='resp', progress='text')
-  r_rf_wyomingensis_current  <- predict(climate_variables, wyomingensis_rf[[1]][[1]], type='resp', progress='text')
+# cat(" -- projecting model rasters\n")
+#   r_glm_vaseyana_current <- predict(climate_variables, vaseyana_glm[[1]][[1]], type='resp', progress='text')
+#   r_rf_vaseyana_current  <- predict(climate_variables, vaseyana_rf[[1]][[1]], type='resp', progress='text')
+# cat(" -- projecting model rasters\n")
+#   r_glm_tridentata_current <- predict(climate_variables, tridentata_glm[[1]][[1]], type='resp', progress='text')
+#   r_rf_tridentata_current  <- predict(climate_variables, tridentata_rf[[1]][[1]], type='resp', progress='text')
+# cat(" -- projecting model rasters\n")
+#   r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm[[1]][[1]], type='resp', progress='text')
+#   r_rf_wyomingensis_current  <- predict(climate_variables, wyomingensis_rf[[1]][[1]], type='resp', progress='text')
 
 # make some raster projections
-dev.new(height=5,width=8.5)
-par(mfrow=c(1,3))
-par(mar=par()$mar/1.5)
-mask <- r_glm_tridentata_current >= tridentata_glm[[2]][,4] # mask with binary image
-  plot(r_glm_tridentata_current*mask,main="ssp tridentata (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
-mask <- r_glm_wyomingensis_current >= wyomingensis_glm[[2]][,4] 
-  plot(r_glm_wyomingensis_current*mask,main="ssp wyomingensis (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
-mask <- r_glm_vaseyana_current >= vaseyana_glm[[2]][,4] 
-  plot(r_glm_vaseyana_current*mask,main="ssp vaseyana (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
+# dev.new(height=5,width=8.5)
+# par(mfrow=c(1,3))
+# par(mar=par()$mar/1.5)
+# mask <- r_glm_tridentata_current >= tridentata_glm[[2]][,4] # mask with binary image
+#   plot(r_glm_tridentata_current*mask,main="ssp tridentata (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
+# mask <- r_glm_wyomingensis_current >= wyomingensis_glm[[2]][,4] 
+#   plot(r_glm_wyomingensis_current*mask,main="ssp wyomingensis (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
+# mask <- r_glm_vaseyana_current >= vaseyana_glm[[2]][,4] 
+#   plot(r_glm_vaseyana_current*mask,main="ssp vaseyana (current climate -- glm)"); plot(boundaries, add=T, border="DarkGrey")
 
-dev.new(height=5,width=8.5)
-par(mfrow=c(1,3))
-par(mar=par()$mar/1.5)
-  plot(r_rf_tridentata_current,main="ssp tridentata (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
-  plot(r_rf_wyomingensis_current,main="ssp wyomingensis (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
-  plot(r_rf_vaseyana_current,main="ssp vaseyana (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+# dev.new(height=5,width=8.5)
+# par(mfrow=c(1,3))
+# par(mar=par()$mar/1.5)
+#   plot(r_rf_tridentata_current,main="ssp tridentata (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+#   plot(r_rf_wyomingensis_current,main="ssp wyomingensis (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
+#   plot(r_rf_vaseyana_current,main="ssp vaseyana (current climate -- rf)"); plot(boundaries, add=T, border="DarkGrey")
 
 cat(" -- done\n")
