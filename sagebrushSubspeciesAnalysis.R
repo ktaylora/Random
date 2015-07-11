@@ -126,10 +126,12 @@ build_GLM <- function(training,evaluation,formula=NULL,debug=F){
   models   <- list();
   cat(" -- building GLM series:")
   for(i in 1:nrow(orders)){
+    # build a formula object for this step of the 'orders' matrix
     j <- paste(names(training)[2:6],orders[i,],sep="^")
       j<-paste("I(",j,sep="")
         j<-paste(j,")",sep="")
           j<-paste(j,collapse="+")
+            # tack-on a string of all potential variable interactions
             j<-paste(j,paste(apply(apply(combn(names(training)[2:6],m=2),MARGIN=1,FUN=c),1,FUN=paste,collapse=":"),collapse="+"),sep="+")
             formulas[[length(formulas)+1]] <- formula(paste(names(training)[1],j,sep="~"))
             models[[length(models)+1]] <- glm(formula=formulas[[length(formulas)]],family=binomial,data=training)
