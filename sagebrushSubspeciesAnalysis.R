@@ -42,8 +42,10 @@ spatialPointsToPPP <- function(x,extentMultiplier=1.1){
 
 #
 # buildTrainingEvaluationSets()
+# split a spatial points data frame into training or evaluation datasets based on spatial segregation of data
 #
-buildTrainingEvaluationSets <- function(p_focal,debug=T){
+
+buildTrainingEvaluationSets <- function(p_focal, type="spatially-uniform", debug=T){
  # generate pseudo-absences using an 8-degrees from presences method
   r_template <- raster(res=0.008333333) # consistent with the CRS and resolution of our climate data
   p_focal    <- spTransform(p_focal, CRS(projection(r_template)))
@@ -63,53 +65,92 @@ buildTrainingEvaluationSets <- function(p_focal,debug=T){
           abs_pts <- abs_pts[as.vector(!is.na(sp::over(abs_pts,boundaries))),]
             abs_pts <- abs_pts[sample(1:nrow(abs_pts),size=nrow(p_focal[p_focal$resp==1,])),] # downsample to a count consistent with our presence records
   # generate a sampling grid for k-fold crossvalidation from our presence data
-  x <- spatialPointsToPPP(p_focal[p_focal$resp==1,])
-    x <- envelope(x, r=seq(0,0.8,0.001), fun=Jest, 1000)
-  cat(" -- values for r (degrees) that intersect with the same level of clustering observed in presence records:\n");
-  print(seq(0,0.8,0.001)[which(x$lo < x$obs)])
-  intersection <- seq(0,0.8,0.001)[which(x$lo < x$obs)][5] # treat the first 5 values as burn-in and ignore them
-  if(debug){
-    dev.new(height=6, width=8)
-      plot(x,col="white", main=paste("J-Function For ",deparse(substitute(p_focal)),sep=""))
-        grid();
-          plot(x, add=T)
-            abline(v=intersection)
-  }
   
-  samplingGrid <- crop(raster(res=intersection),boundaries)      
-    samplingMatrix <- matrix(c(0,1), nrow=nrow(samplingGrid), ncol=ifelse(!(ncol(samplingGrid)%%2),ncol(samplingGrid)+1,ncol(samplingGrid)), byrow=T)
-      samplingGrid <- setValues(samplingGrid,samplingMatrix[1:nrow(samplingGrid),1:ncol(samplingGrid)])
-      
-  # plot our records space
-  if(debug){
-    dev.new(height=6,width=8)
-    plot(samplingGrid, add=F, legend=F)
-    plot(abs_pts,pch=15, cex=0.5, col="red", add=T)
-    plot(p_focal[p_focal$resp==1,], col="DarkBlue", cex=0.5, pch=15,add=T)
-    plot(boundaries, add=T)
-  }
-  
-  # extract training and evaluation data
-  climate_variables <- crop(climate_variables,boundaries,progress='text')
-  cat(" -- extracting climate data for model training")
-  training <- raster::extract(samplingGrid,p_focal[p_focal$resp==1,],sp=T) 
-    training_presence     <- training[training$layer == 1,]
-      training_presence@data <- data.frame(resp=rep(1,nrow(training_presence@data)))
-        training_presence@data <- cbind(training_presence@data,extract(climate_variables,training_presence))
-    evaluation_presences  <- training[training$layer == 0,]
-      evaluation_presences@data <- data.frame(resp=rep(1,nrow(evaluation_presences@data)))
-        evaluation_presences@data <- cbind(evaluation_presences@data,extract(climate_variables,evaluation_presences))
+  ## implement a spatially uniform split?
+  if(grepl(type,pattern="uniform")){
+    x <- spatialPointsToPPP(p_focal[p_focal$resp==1,])
+      x <- envelope(x, r=seq(0,0.8,0.001), fun=Jest, 1000)
+    cat(" -- values for r (degrees) that intersect with the same level of clustering observed in presence records:\n");
+    print(seq(0,0.8,0.001)[which(x$lo < x$obs)])
+    intersection <- seq(0,0.8,0.001)[which(x$lo < x$obs)][5] # treat the first 5 values as burn-in and ignore them
+    if(debug){
+      dev.new(height=6, width=8)
+        plot(x,col="white", main=paste("J-Function For ",deparse(substitute(p_focal)),sep=""))
+          grid();
+            plot(x, add=T)
+              abline(v=intersection)
+    }
+    # build a rasterized checkerboard sampling grid
+    samplingGrid <- crop(raster(res=intersection),boundaries)      
+      samplingMatrix <- matrix(c(0,1), nrow=nrow(samplingGrid), ncol=ifelse(!(ncol(samplingGrid)%%2),ncol(samplingGrid)+1,ncol(samplingGrid)), byrow=T)
+        samplingGrid <- setValues(samplingGrid,samplingMatrix[1:nrow(samplingGrid),1:ncol(samplingGrid)])   
+    # plot our records space
+    if(debug){
+      dev.new(height=6,width=8)
+      plot(samplingGrid, add=F, legend=F)
+      plot(abs_pts,pch=15, cex=0.5, col="red", add=T)
+      plot(p_focal[p_focal$resp==1,], col="DarkBlue", cex=0.5, pch=15,add=T)
+      plot(boundaries, add=T)
+    }
+    # extract training and evaluation data
+    climate_variables <- crop(climate_variables,boundaries,progress='text')
+    cat(" -- extracting climate data for model training")
+    training <- raster::extract(samplingGrid,p_focal[p_focal$resp==1,],sp=T) 
+      training_presence     <- training[training$layer == 1,]
+        training_presence@data <- data.frame(resp=rep(1,nrow(training_presence@data)))
+          training_presence@data <- cbind(training_presence@data,extract(climate_variables,training_presence))
+      evaluation_presence  <- training[training$layer == 0,]
+        evaluation_presence@data <- data.frame(resp=rep(1,nrow(evaluation_presence@data)))
+          evaluation_presence@data <- cbind(evaluation_presence@data,extract(climate_variables,evaluation_presence))
 
-  training <- raster::extract(samplingGrid,abs_pts,sp=T)
-    training_abs     <- training[as.vector(training[,2]@data == 1),]
-      training_abs@data <- data.frame(resp=rep(0,nrow(training_abs@data)))
-        training_abs@data <- cbind(training_abs@data,extract(climate_variables,training_abs))
-    evaluation_abs   <- training[as.vector(training[,2]@data == 0),]
-      evaluation_abs@data <- data.frame(resp=rep(0,nrow(evaluation_abs@data)))
-        evaluation_abs@data <- cbind(evaluation_abs@data,extract(climate_variables,evaluation_abs))
-    
-  training <- rbind(training_presence,training_abs)@data
-  evaluation <- rbind(evaluation_presences,evaluation_abs)@data
+    training <- raster::extract(samplingGrid,abs_pts,sp=T)
+      training_abs     <- training[as.vector(training[,2]@data == 1),]
+        training_abs@data <- data.frame(resp=rep(0,nrow(training_abs@data)))
+          training_abs@data <- cbind(training_abs@data,extract(climate_variables,training_abs))
+      evaluation_abs   <- training[as.vector(training[,2]@data == 0),]
+        evaluation_abs@data <- data.frame(resp=rep(0,nrow(evaluation_abs@data)))
+          evaluation_abs@data <- cbind(evaluation_abs@data,extract(climate_variables,evaluation_abs))
+      
+    training   <- rbind(training_presence,training_abs)@data
+    evaluation <- rbind(evaluation_presence,evaluation_abs)@data
+
+  ## implement the longitudinal strips of Bahn, V., and B. J. McGill. 2013?
+  } else if(grepl(type,pattern="longitudinal")){
+    # identify the longitudinal quantiles or our presence records
+    lon_quantiles <- as.vector(quantile(p_focal[p_focal$resp==1,]@coords[,1],p=c(0.25,0.5,0.75)))
+    training_presence <- p_focal[p_focal[p_focal$resp==1,]@coords[,1] < lon_quantiles[1],] # 1st quantile
+      training_presence <- rbind(training_presence,
+                        p_focal[p_focal[p_focal$resp==1,]@coords[,1] > lon_quantiles[2] & # 3rd quantile
+                                p_focal[p_focal$resp==1,]@coords[,1] < lon_quantiles[3],]) 
+    training_abs <- abs_pts[abs_pts@coords[,1] < lon_quantiles[1],] # 1st quantile
+      training_abs <- rbind(training_abs,
+                            abs_pts[abs_pts@coords[,1] > lon_quantiles[2] & # 3rd quantile
+                                    abs_pts@coords[,1] < lon_quantiles[3],]) 
+
+    evaluation_presence <- p_focal[p_focal[p_focal$resp==1,]@coords[,1] > lon_quantiles[1] & # 2nd quantile
+                                   p_focal[p_focal$resp==1,]@coords[,1] < lon_quantiles[2],]
+      evaluation_presence <- rbind(evaluation_presence,
+                                   p_focal[p_focal[p_focal$resp==1,]@coords[,1] > lon_quantiles[3],]) # 4th quantile
+    evaluation_abs <- abs_pts[abs_pts@coords[,1] > lon_quantiles[1] & # 2nd quantile
+                              abs_pts@coords[,1] < lon_quantiles[2],]
+      evaluation_abs <- rbind(evaluation_abs,
+                                   abs_pts@coords[,1] > lon_quantiles[3],]) # 4th quantile
+    # extract training and evaluation data
+    climate_variables <- crop(climate_variables,boundaries,progress='text')
+    cat(" -- extracting climate data for model training")
+    training_presence@data <- data.frame(resp=rep(1,nrow(training_presence@data)))
+      training_presence@data <- cbind(training_presence@data,extract(climate_variables,training_presence))
+    evaluation_presence@data <- data.frame(resp=rep(1,nrow(evaluation_presence@data)))
+      evaluation_presence@data <- cbind(evaluation_presence@data,extract(climate_variables,evaluation_presence))
+    training_abs@data <- data.frame(resp=rep(0,nrow(training_abs@data)))
+      training_abs@data <- cbind(training_abs@data,extract(climate_variables,training_abs))
+    evaluation_abs@data <- data.frame(resp=rep(0,nrow(evaluation_abs@data)))
+      evaluation_abs@data <- cbind(evaluation_abs@data,extract(climate_variables,evaluation_abs))
+      
+    training   <- rbind(training_presence,training_abs)@data
+    evaluation <- rbind(evaluation_presence,evaluation_abs)@data
+  }
+
   return(list(training,evaluation))
 }
 
@@ -134,9 +175,8 @@ build_GLM <- function(training,evaluation,formula=NULL,debug=F){
             # tack-on a string of all potential variable interactions
             j<-paste(j,paste(apply(apply(combn(names(training)[2:6],m=2),MARGIN=1,FUN=c),1,FUN=paste,collapse=":"),collapse="+"),sep="+")
               formulas[[length(formulas)+1]] <- formula(paste(names(training)[1],j,sep="~"))
-    # fit a GLM to our formula object and store in a massively inefficient list object
-    models[[length(models)+1]] <- glm(formula=formulas[[length(formulas)]],family=binomial,data=training)
-    cat(".")
+    # fit a GLM to our formula object and store in a massively inefficient list 
+    models[[length(models)+1]] <- glm(formula=formulas[[length(formulas)]],family=binomial,data=training); cat(".");
   };cat("\n");
 
   # Make Some Q/D GLM AIC plots
