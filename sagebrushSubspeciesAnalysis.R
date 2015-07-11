@@ -133,9 +133,10 @@ build_GLM <- function(training,evaluation,formula=NULL,debug=F){
           j<-paste(j,collapse="+")
             # tack-on a string of all potential variable interactions
             j<-paste(j,paste(apply(apply(combn(names(training)[2:6],m=2),MARGIN=1,FUN=c),1,FUN=paste,collapse=":"),collapse="+"),sep="+")
-            formulas[[length(formulas)+1]] <- formula(paste(names(training)[1],j,sep="~"))
-            models[[length(models)+1]] <- glm(formula=formulas[[length(formulas)]],family=binomial,data=training)
-              cat(".")
+              formulas[[length(formulas)+1]] <- formula(paste(names(training)[1],j,sep="~"))
+    # fit a GLM to our formula object and store in a massively inefficient list object
+    models[[length(models)+1]] <- glm(formula=formulas[[length(formulas)]],family=binomial,data=training)
+    cat(".")
   };cat("\n");
 
   # Make Some Q/D GLM AIC plots
