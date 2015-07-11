@@ -43,7 +43,7 @@ spatialPointsToPPP <- function(x,extentMultiplier=1.1){
 #
 # buildTrainingEvaluationSets()
 #
-buildTrainingEvaluationSets <- function(x,debug=T){
+buildTrainingEvaluationSets <- function(p_focal,debug=T){
  # generate pseudo-absences using an 8-degrees from presences method
   r_template <- raster(res=0.008333333) # consistent with the CRS and resolution of our climate data
   p_focal    <- spTransform(p_focal, CRS(projection(r_template)))
