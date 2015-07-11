@@ -123,7 +123,7 @@ buildTrainingEvaluationSets <- function(p_focal, type="spatially-uniform", debug
     presence <- p_focal[p_focal$resp == 1,];
        training_presence <- presence[presence@coords[,1] < lon_quantiles[1],] # 1st quantile
       training_presence <- rbind(training_presence,
-                        presence[precence@coords[,1] > lon_quantiles[2] & # 3rd quantile
+                        presence[presence@coords[,1] > lon_quantiles[2] & # 3rd quantile
                                  presence@coords[,1] < lon_quantiles[3],]) 
     training_abs <- abs_pts[abs_pts@coords[,1] < lon_quantiles[1],] # 1st quantile
       training_abs <- rbind(training_abs,
