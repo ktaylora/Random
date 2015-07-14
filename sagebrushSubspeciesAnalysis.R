@@ -10,6 +10,8 @@ require(spatstat)
 require(rgdal)
 require(rgeos)
 
+require(landscapeAnalysis)
+
 HOME <- Sys.getenv("HOME")
 
 #
@@ -303,6 +305,80 @@ cat(" -- projecting model rasters\n")
 r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm_unif[[1]][[1]], type='resp', progress='text')
 r_rf_wyomingensis_current  <- 1-predict(climate_variables, wyomingensis_rf_unif[[1]], type='prob', progress='text')
 ens_wyomingensis_current   <- stackApply(stack(r_glm_wyomingensis_current,r_rf_wyomingensis_current),fun=mean,indices=1,progress='text')
+
+dev.new(height=5,width=10)
+par(mfrow=c(1,3))
+
+plot(ens_tridentata_current,main="ssp. tridentata");
+plot(boundaries, border=rgb(0, 0, 0, 0.5),add=T);
+plot(ens_wyomingensis_current,main="ssp. wyomingensis");
+plot(boundaries, border=rgb(0, 0, 0, 0.5),add=T);
+plot(ens_vaseyana_current,main="ssp. vaseyana");
+plot(boundaries, border=rgb(0, 0, 0, 0.5),add=T);
+
+# magnitude of difference surfaces
+# r_mag_dif_tridentata<-round(r_rf_tridentata_current/r_glm_tridentata_current,3)
+#   r_mag_dif_tridentata[r_mag_dif_tridentata>3] <- 3
+#     plot(r_mag_dif_tridentata, main="Tridentata. (Magnitude of difference [RF/GLM])"); plot(boundaries,add=T)
+# r_mag_dif_wyomingensis<-round(r_rf_wyomingensis_current/r_glm_wyomingensis_current,3)
+#   r_mag_dif_wyomingensis[r_mag_dif_wyomingensis>3] <- 3
+#     plot(r_mag_dif_wyomingensis, main="Wyomingensis. (Magnitude of difference [RF/GLM])"); plot(boundaries,add=T)
+# r_mag_dif_vaseyana<-round(r_rf_vaseyana_current/r_glm_vaseyana_current,3)
+#   r_mag_dif_vaseyana[r_mag_dif_vaseyana>3] <- 3
+#     plot(r_mag_dif_vaseyana, main="Vaseyana. (Magnitude of difference [RF/GLM])"); plot(boundaries,add=T)
+
+# Calculate Agreement / Disagreement Vector Surfaces
+tridentata_current_quantiles   <- extractDensities(ens_tridentata_current,p=c(0.5,0.75,0.95))
+wyomingensis_current_quantiles <- extractDensities(ens_wyomingensis_current,p=c(0.5,0.75,0.95))
+vaseyana_current_quantiles     <- extractDensities(ens_vaseyana_current,p=c(0.5,0.75,0.95))
+
+intersect_p50_current <- rgeos::gIntersection(rgeos::gIntersection(tridentata_current_quantiles[[1]],wyomingensis_current_quantiles[[1]])@polyobj,vaseyana_current_quantiles[[1]])@polyobj
+intersect_p50_wyo_tri_current <- rgeos::gIntersection(tridentata_current_quantiles[[1]],wyomingensis_current_quantiles[[1]])@polyobj
+intersect_p75_current <- rgeos::gIntersection(rgeos::gIntersection(tridentata_current_quantiles[[2]],wyomingensis_current_quantiles[[2]])@polyobj,vaseyana_current_quantiles[[2]])@polyobj
+
+unique_p50_current_wyomingensis <- rgeos::gDifference(wyomingensis_current_quantiles[[1]],tridentata_current_quantiles[[1]]) # wyomingensis has greater range
+  unique_p50_current_wyomingensis <- rgeos::gDifference(unique_p50_current_wyomingensis, vaseyana_current_quantiles[[1]])
+
+unique_p50_current_tridentata <- rgeos::gDifference(tridentata_current_quantiles[[1]],wyomingensis_current_quantiles[[1]])
+    unique_p50_current_tridentata <- rgeos::gDifference(unique_p50_current_tridentata, vaseyana_current_quantiles[[1]])
+
+unique_p50_current_vaseyana <- rgeos::gDifference(vaseyana_current_quantiles[[1]],wyomingensis_current_quantiles[[1]])
+    unique_p50_current_vaseyana <- rgeos::gDifference(unique_p50_current_vaseyana, tridentata_current_quantiles[[1]])
+
+# plot unique regions and consensus amoung ssp
+dev.new(width=9.807017,height=5.385965)
+par(mfrow=c(1,2))
+par(mar=par()$mar/2)
+plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.8)
+  plot(spTransform(intersect_p50_current,CRS(projection("+init=epsg:2163"))), col="#003D7A",border=NA,add=T)
+  plot(spTransform(unique_p50_current_tridentata,CRS(projection("+init=epsg:2163"))), col="#005CB8",border=NA,add=T)
+  plot(spTransform(unique_p50_current_wyomingensis,CRS(projection("+init=epsg:2163"))), col="#4D94DB",border=NA,add=T)
+  plot(spTransform(unique_p50_current_vaseyana,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
+  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), add=T)
+box(); grid(lty=1,col="#00000030")
+legend("topright", c("consensus","tridentata","wyomingensis","vaseyana"), cex=0.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
+
+plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.8)
+  plot(spTransform(intersect_p50_wyo_tri_current,CRS(projection("+init=epsg:2163"))), col="#003D7A",border=NA,add=T)
+  plot(spTransform(unique_p50_current_wyomingensis,CRS(projection("+init=epsg:2163"))), col="#005CB8",border=NA,add=T)
+  plot(spTransform(unique_p50_current_tridentata,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
+  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
+box(); grid(lty=1,col="#00000030")
+legend("topright", c("consensus","wyomingensis","tridentata"), cex=0.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
+
+# plot overlapping envelopes
+dev.new(height=5.359649,width=6.219298)
+
+plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.8)
+  plot(spTransform(wyomingensis_current_quantiles[[1]],CRS(projection("+init=epsg:2163"))), col="#00330099",border=NA,add=T)
+  plot(spTransform(tridentata_current_quantiles[[1]],CRS(projection("+init=epsg:2163"))), col="#19751980",border=NA,add=T)
+  plot(spTransform(vaseyana_current_quantiles[[1]],CRS(projection("+init=epsg:2163"))), col="#80B280B3",border=NA,add=T)
+  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
+box(); grid(lty=1,col="#00000030")
+legend("topright", c("wyomingensis","tridentata","vaseyana"), cex=0.8, fill=c("#003300","#197519","#80B280"),bg = "white");
+
+
+# intersect_p95_current<-rgeos::gIntersection(tridentata_current_quantiles[[3]],wyomingensis_current_quantiles[[3]])@polyobj # only tridentata and wyomingensis overlap at the p=0.95
 
 # cat(" -- projecting model rasters\n")
 #   r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm[[1]][[1]], type='resp', progress='text')
