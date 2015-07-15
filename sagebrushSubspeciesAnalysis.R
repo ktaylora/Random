@@ -14,6 +14,41 @@ require(landscapeAnalysis)
 
 HOME <- Sys.getenv("HOME")
 
+
+#
+#  responsePlot()
+#
+
+responsePlot <- function(x,var=NULL,plot=T){
+  m <- x[[1]][[1]]
+  if(is.null(var)) stop("var= argument undefined");
+  if(sum(names(d) %in% var)==0) stop("var= not found in model object")
+  # define names
+  names <- names(d);
+    names <- names[names != "resp"]
+
+  d        <- x[[1]][[1]]$data
+  focal    <- d[,var]
+  notFocal <- d[,names[names!=var]]
+
+  x <- apply(notFocal,2,FUN=median, na.rm=T)
+    x <- data.frame(matrix(x,nrow=1))
+      names(x) <- names[names!=var]
+
+  spread <- sort(runif(min=min(focal,na.rm=T),max=max(focal,na.rm=T),n=nrow(notFocal)))
+    x <- cbind(spread,x)
+      names(x) <- c(var,names[names!=var])
+
+  prob <- as.vector(predict(m,x,type="resp"))
+    prob[prob < 0] <- 0; prob[prob>1] <- 1
+      prob <- data.frame(cbind(prob,x[,var]))
+        names(prob) <- c("prob",var)
+  if(plot){
+    plot(prob~get(var),type="l",data=prob, ylim=c(0,1),xlab=var,ylab="probability of occurrence", col="white",cex=1.8)
+      grid(lwd=1.2); lines(prob~get(var),lwd=1.2,col="red",data=prob)
+  }
+}
+
 #
 # spatialPointsToPPP()
 # Convert a standard SpatialPoints* object to a ppp for use in spatstat
