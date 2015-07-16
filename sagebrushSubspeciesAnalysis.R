@@ -22,9 +22,9 @@ HOME <- Sys.getenv("HOME")
 responsePlot <- function(x,var=NULL,plot=T){
   m <- x[[1]][[1]]
   if(is.null(var)) stop("var= argument undefined");
-  if(sum(names(d) %in% var)==0) stop("var= not found in model object")
+  if(sum(names(m$data) %in% var)==0) stop("var= not found in model object")
   # define names
-  names <- names(d);
+  names <- names(m$data);
     names <- names[names != "resp"]
 
   d        <- x[[1]][[1]]$data
@@ -44,7 +44,7 @@ responsePlot <- function(x,var=NULL,plot=T){
       prob <- data.frame(cbind(prob,x[,var]))
         names(prob) <- c("prob",var)
   if(plot){
-    plot(prob~get(var),type="l",data=prob, ylim=c(0,1),xlab=var,ylab="probability of occurrence", col="white",cex=1.8)
+    plot(prob~get(var),type="l",data=prob, ylim=c(0,1),xlab=var,ylab="p(occ)", col="white",cex=1.8)
       grid(lwd=1.2); lines(prob~get(var),lwd=1.2,col="red",data=prob)
   }
 }
@@ -412,8 +412,146 @@ plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",bord
 box(); grid(lty=1,col="#00000030")
 legend("topright", c("wyomingensis","tridentata","vaseyana"), cex=0.8, fill=c("#003300","#197519","#80B280"),bg = "white");
 
+# response plots for GLMs
+png("/Users/ktaylora/Desktop/wyo_response_plots_glm.png",height=1200,width=800)
+  par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
+    for(v in vars){
+      responsePlot(wyomingensis_glm_unif,var=v)
+      out <- partialPlot(wyomingensis_rf_unif[[1]],x.var=as.character(v),pred.data=na.omit(wyomingensis_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
+      out$y <- exp(out$y);
+      out$y <- (out$y/max(out$y))
+      lines(y=out$y, x=out$x,lwd=1.8,col="blue",main="",xlab=as.character(v))
+    }
+      graphics.off()
+png("/Users/ktaylora/Desktop/tri_response_plots_glm.png",height=1200,width=800)
+    par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
+      for(v in vars){ responsePlot(tridentata_glm_unif,var=v) }
+        graphics.off()
+png("/Users/ktaylora/Desktop/vas_response_plots_glm.png",height=1200,width=800)
+  par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
+    for(v in vars){ responsePlot(vaseyana_glm_unif,var=v) }
+      graphics.off()
 
-# intersect_p95_current<-rgeos::gIntersection(tridentata_current_quantiles[[3]],wyomingensis_current_quantiles[[3]])@polyobj # only tridentata and wyomingensis overlap at the p=0.95
+# response plots for RFs
+png("/Users/ktaylora/Desktop/wyomingnesis_response_plots_rf.png",height=1200,width=800)
+  par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
+    for(v in vars){
+
+    }
+graphics.off()
+png("/Users/ktaylora/Desktop/tridentata_response_plots_rf.png",height=1200,width=800)
+  par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
+    for(v in vars){
+      partialPlot(tridentata_rf_unif[[1]],x.var=as.character(v),pred.data=na.omit(tridentata_glm_unif[[1]][[1]]$data),which.class=1,lwd=2,col="red",main="",xlab=as.character(v))
+    }
+graphics.off()
+png("/Users/ktaylora/Desktop/vaseyana_response_plots_rf.png",height=1200,width=800)
+  par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
+    for(v in vars){
+      partialPlot(vaseyana_rf_unif[[1]],x.var=as.character(v),pred.data=na.omit(vaseyana_glm_unif[[1]][[1]]$data),which.class=1,lwd=2,col="red",main="",xlab=as.character(v))
+    }
+graphics.off()
+
+# project into future climate conditions
+setwd("/Volumes/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript")
+focal_vars <- paste(paste("*.",c("03.tif$","04.tif$","11.tif$","15.tif$","18.tif$"),sep=""),collapse="|")
+
+## 2050 (Wyomingensis)
+# gf45
+utils::unzip("gf45bi50.zip", exdir="/tmp/gf45bi50/")
+gfdl_cm3_2050_45 <- list.files("/tmp/gf45bi50",pattern="tif$",full.names=T)
+  gfdl_cm3_2050_45 <- raster::stack(gfdl_cm3_2050_45[grepl(gfdl_cm3_2050_45,pattern=focal_vars)])
+    gfdl_cm3_2050_45 <- raster::crop(gfdl_cm3_2050_45,climate_variables,progress='text')
+      names(gfdl_cm3_2050_45) <- names(climate_variables) # the order of the files are in agreement
+
+gfdl_cm3_2050_45_glm <- predict(gfdl_cm3_2050_45,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+gfdl_cm3_2050_45_rf  <- 1-predict(gfdl_cm3_2050_45,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+gfdl_cm3_2050_45_ens <- stackApply(stack(gfdl_cm3_2050_45_glm,gfdl_cm3_2050_45_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/gf45bi50",recursive=T,force=T)
+# gf85
+utils::unzip("gf85bi50.zip", exdir="/tmp/gf85bi50/")
+gfdl_cm3_2050_85 <- list.files("/tmp/gf85bi50",pattern="tif$",full.names=T)
+  gfdl_cm3_2050_85 <- raster::stack(gfdl_cm3_2050_85[grepl(gfdl_cm3_2050_85,pattern=focal_vars)])
+    gfdl_cm3_2050_85 <- raster::crop(gfdl_cm3_2050_85,climate_variables,progress='text')
+      names(gfdl_cm3_2050_85) <- names(climate_variables)
+
+gfdl_cm3_2050_85_glm <- predict(gfdl_cm3_2050,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+gfdl_cm3_2050_85_rf  <- 1-predict(gfdl_cm3_2050,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+gfdl_cm3_2050_85_ens <- stackApply(stack(gfdl_cm3_2050_85_glm,gfdl_cm3_2050_85_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/gf85bi50",recursive=T,force=T)
+# ip45
+utils::unzip("ip45bi50.zip", exdir="/tmp/ip45bi50/")
+ipsl_cm5b_lr_2050_45 <- list.files("/tmp/gf45bi50",pattern="tif$",full.names=T)
+  ipsl_cm5b_lr_2050_45 <- raster::stack(ipsl_cm5b_lr_2050_45[grepl(ipsl_cm5b_lr_2050_45,pattern=focal_vars)])
+    ipsl_cm5b_lr_2050_45 <- raster::crop(ipsl_cm5b_lr_2050_45,climate_variables,progress='text')
+      names(ipsl_cm5b_lr_2050_45) <- names(climate_variables) # the order of the files are in agreement
+
+ipsl_cm5b_lr_2050_45_glm <- predict(ipsl_cm5b_lr_2050_45,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+ipsl_cm5b_lr_2050_45_rf  <- 1-predict(ipsl_cm5b_lr_2050_45,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+ipsl_cm5b_lr_2050_45_ens <- stackApply(stack(ipsl_cm5b_lr_2050_45_glm,ipsl_cm5b_lr_2050_45_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/ip45bi50",recursive=T,force=T)
+# ip85
+utils::unzip("ip85bi50.zip", exdir="/tmp/ip85bi50/")
+ipsl_cm5b_lr_2050_85 <- list.files("/tmp/ip85bi50",pattern="tif$",full.names=T)
+  ipsl_cm5b_lr_2050_85 <- raster::stack(ipsl_cm5b_lr_2050_85[grepl(ipsl_cm5b_lr_2050_85,pattern=focal_vars)])
+    ipsl_cm5b_lr_2050_85 <- raster::crop(ipsl_cm5b_lr_2050_85,climate_variables,progress='text')
+      names(ipsl_cm5b_lr_2050_85) <- names(climate_variables) # the order of the files are in agreement
+
+ipsl_cm5b_lr_2050_85_glm <- predict(ipsl_cm5b_lr_2050_85,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+ipsl_cm5b_lr_2050_85_rf  <- 1-predict(ipsl_cm5b_lr_2050_85,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+ipsl_cm5b_lr_2050_85_ens <- stackApply(stack(ipsl_cm5b_lr_2050_85_glm,ipsl_cm5b_lr_2050_85_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/gf85bi50",recursive=T,force=T)
+# ac45
+utils::unzip("ac45bi50.zip", exdir="/tmp/ac45bi50/")
+access_1_0_2050_45 <- list.files("/tmp/ac45bi50",pattern="tif$",full.names=T)
+  access_1_0_2050_45 <- raster::stack(access_1_0_2050_45[grepl(access_1_0_2050_45,pattern=focal_vars)])
+    access_1_0_2050_45 <- raster::crop(access_1_0_2050_45,climate_variables,progress='text')
+      names(access_1_0_2050_45) <- names(climate_variables) # the order of the files are in agreement
+
+access_1_0_2050_45_glm <- predict(access_1_0_2050_45,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+access_1_0_2050_45_rf  <- 1-predict(access_1_0_2050_45,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+access_1_0_2050_45_ens <- stackApply(stack(access_1_0_2050_45_glm,access_1_0_2050_45_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/ac45bi50",recursive=T,force=T)
+# ac85
+utils::unzip("ac85bi50.zip", exdir="/tmp/ac85bi50/")
+access_1_0_2050_85 <- list.files("/tmp/ac85bi50",pattern="tif$",full.names=T)
+  access_1_0_2050_85 <- raster::stack(access_1_0_2050_85[grepl(access_1_0_2050_85,pattern=focal_vars)])
+    access_1_0_2050_85 <- raster::crop(access_1_0_2050_85,climate_variables,progress='text')
+      names(access_1_0_2050_85) <- names(climate_variables) # the order of the files are in agreement
+
+access_1_0_2050_85_glm <- predict(access_1_0_2050_85,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+access_1_0_2050_85_rf  <- 1-predict(access_1_0_2050_85,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+access_1_0_2050_85_ens <- stackApply(stack(access_1_0_2050_85_glm,access_1_0_2050_85_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/ac85bi50",recursive=T,force=T)
+# in45
+utils::unzip("in45bi50.zip", exdir="/tmp/in45bi50/")
+inmcm4_2050_45 <- list.files("/tmp/in45bi50",pattern="tif$",full.names=T)
+  inmcm4_2050_45 <- raster::stack(inmcm4_2050_45[grepl(inmcm4_2050_45,pattern=focal_vars)])
+    inmcm4_2050_45 <- raster::crop(inmcm4_2050_45,climate_variables,progress='text')
+      names(inmcm4_2050_45) <- names(climate_variables) # the order of the files are in agreement
+
+inmcm4_2050_45_glm <- predict(inmcm4_2050_45,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+inmcm4_2050_45_rf  <- 1-predict(inmcm4_2050_45,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+inmcm4_2050_45_ens <- stackApply(stack(inmcm4_2050_45_glm,inmcm4_2050_45_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/ac45bi50",recursive=T,force=T)
+# in85
+utils::unzip("in85bi50.zip", exdir="/tmp/in85bi50/")
+inmcm4_2050_85 <- list.files("/tmp/in85bi50",pattern="tif$",full.names=T)
+  inmcm4_2050_85 <- raster::stack(inmcm4_2050_85[grepl(inmcm4_2050_85,pattern=focal_vars)])
+    inmcm4_2050_85 <- raster::crop(inmcm4_2050_85,climate_variables,progress='text')
+      names(inmcm4_2050_85) <- names(climate_variables) # the order of the files are in agreement
+
+inmcm4_2050_85_glm <- predict(inmcm4_2050_85,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
+inmcm4_2050_85_rf  <- 1-predict(inmcm4_2050_85,wyomingensis_rf_unif[[1]],type='prob',progress='text')
+inmcm4_2050_85_ens <- stackApply(stack(inmcm4_2050_85_glm,inmcm4_2050_85_rf),fun=mean,indices=1,progress='text')
+unlink("/tmp/in85bi50",recursive=T,force=T)
+
+
+## 2070
+
+
+
+
 
 # cat(" -- projecting model rasters\n")
 #   r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm[[1]][[1]], type='resp', progress='text')
