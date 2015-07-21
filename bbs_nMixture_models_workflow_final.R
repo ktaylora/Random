@@ -16,9 +16,9 @@ processFocalRoute <- function(route=NULL){
   points  <- habitatWorkbench::sampleAroundVertices(s=route,maxDist=2200,n=250) # generate a number of sampling points around each route to derive our site-level landscape metrics
   buffers <- landscapeAnalysis::subsampleSurface(x=landcover,pts=points, width=750) # sample buffers from our source landcover dataset with the points derived from the current route
   # parse our buffers out into focal landcover types
-  buffers_grassland     <- lReclass(buffers,inValues=c(31,39,71,75))
-  buffers_agriculture   <- lReclass(buffers,inValues=c(38,201,202,203,205,206,207,208,209,210,211,212))
-  buffers_shrubland     <- lReclass(buffers,inValues=c(83,85,87,81,82))
+  buffers_grassland     <- landscapeAnalysis::lReclass(buffers,inValues=c(31,39,71,75))
+  buffers_agriculture   <- landscapeAnalysis::lReclass(buffers,inValues=c(38,201,202,203,205,206,207,208,209,210,211,212))
+  buffers_shrubland     <- landscapeAnalysis::lReclass(buffers,inValues=c(83,85,87,81,82))
   # calculate the requisite landscape metrics for each cover type
   metrics_grassland <- landscapeAnalysis::lCalculateLandscapeMetrics(buffers_grassland)[[1]] # need: total area and mean patch area
     grassland_total_area <- unlist(lapply(metrics_grassland, function(x){ x$total.area }))
@@ -50,6 +50,7 @@ processFocalRoute <- function(route=NULL){
 #
 
 require(rgdal)
+require(raster)
 require(habitatWorkbench)
 require(parallel); cl <- makeCluster(getOption("cl.cores", 7))
 
@@ -59,15 +60,15 @@ t_routes_bcr1819 <<- read.csv("/home/ktaylora/PLJV/species_data/bbs_data/bbs_rou
 # read-in the national bbs routes data and parse accordingly
 data(bbsRoutes); s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_routes_bcr1819$RTENO,]
 
-
+# ensure we have adequate land cover data for our bbs routes
 landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
   landcover <- extract(landcover,as(spTransform(s_bbsRoutes,CRS(projection(landcover))),'SpatialPointsDataFrame'),sp=T)
-    s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% unique(landcover[!is.na(landcover$Final_LC_8bit),]$RTENO),] # make sure that our route data has landcover data available
+s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% unique(landcover[!is.na(landcover$Final_LC_8bit),]$RTENO),] # make sure that our route data has landcover data available
 
-# finally, let's split our routes so that they can be processed in parallel on a multicore system
+# finally, let's split our routes so that they can be processed in parallel on a multi
 s_bbsRoutes <- split(s_bbsRoutes,f=1:nrow(s_bbsRoutes))
 
-cat(" -- sampling and processing BBS routes: ");
+cat(" -- sampling and processing BBS routes\n");
 out_1_100   <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes[1:100])
   out_101_200 <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes[101:200])
     out_201_22n <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes[201:length(s_bbsRoutes)])
