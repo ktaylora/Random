@@ -97,33 +97,57 @@ if(!file.exists("site_level_parameters.csv")){
 }
 
 ## calculate our isolation metrics (at 3.3 and 30 km2 scales)
-if(!grepl(names(out),pattern="isolation")){
-    landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
-  s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
-    centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteLocations,centroid=T) # calculate the centroid of each route
-buffers_3.3km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=3300/2)      # calculate our 3.3 km regions
-  m <- mcmapply(buffers_3.3km, FUN=raster::crop, MoreArgs=list(x=landcover))
-    buffers_3.3km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_3.3km); rm(m);
-      buffers_3.3km <- lReclass(buffers_3.3km,inValues=c(31,37,39,71,75))
-        buffers_3.3km <- parLapply(cl=cl,buffers_3.3km,fun=landscapeAnalysis::rasterToPolygons)
-          # check for NA values
-          na_values<-as.vector(unlist(lapply(X=buffers_3.3km,FUN=is.na)))
-          if(sum(na_values)>0){
-            buffers_3.3km[na_values] <- buffers_3.3km[which(!na_values)[1]] # overwrite our NA values with something valid
-            buffers_3.3km<-lapply(X=buffers_3.3km,FUN=getSpPPolygonsLabptSlots)
+if(!grepl(names(out),pattern="isolation_3.3")){
+      landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
+    s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
+      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteLocations,centroid=T) # calculate the centroid of each route
+  buffers_3.3km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=3300/2)      # calculate our 3.3 km regions
+    m <- mcmapply(buffers_3.3km, FUN=raster::crop, MoreArgs=list(x=landcover))
+      buffers_3.3km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_3.3km); rm(m);
+        buffers_3.3km <- lReclass(buffers_3.3km,inValues=c(31,37,39,71,75))
+          buffers_3.3km <- parLapply(cl=cl,buffers_3.3km,fun=landscapeAnalysis::rasterToPolygons)
+            # check for NA values
+            na_values<-as.vector(unlist(lapply(X=buffers_3.3km,FUN=is.na)))
+            if(sum(na_values)>0){
+              buffers_3.3km[na_values] <- buffers_3.3km[which(!na_values)[1]] # overwrite our NA values with something valid
+              buffers_3.3km<-lapply(X=buffers_3.3km,FUN=getSpPPolygonsLabptSlots)
 
-          } else {
-            buffers_3.3km<-lapply(X=buffers_3.3km,FUN=getSpPPolygonsLabptSlots)
-          }
-          # do our NN assessment
-          d <- function(x,na.rm=F){ o<-try(FNN::knn.dist(x,k=1)); if(class(o) != "try-error") { x <- o; } else { x[[i]] <- NA }; return(x)}
-          buffers_3.3km <- lapply(buffers_3.3km,FUN=d);rm(d);
-            buffers_3.3km <- lapply(buffers_3.3km, FUN=mean)
-              buffers_3.3km[na_values] <- NA # restore our NA values
-                buffers_3.3km
-                  out$isolation_3.3km<-as.vector(unlist(buffers_3.3km))
+            } else {
+              buffers_3.3km<-lapply(X=buffers_3.3km,FUN=getSpPPolygonsLabptSlots)
+            }
+            # do our NN assessment
+            d <- function(x,na.rm=F){ o<-try(FNN::knn.dist(x,k=1)); if(class(o) != "try-error") { x <- o; } else { x[[i]] <- NA }; return(x)}
+            buffers_3.3km <- lapply(buffers_3.3km,FUN=d);rm(d);
+              buffers_3.3km <- lapply(buffers_3.3km, FUN=mean)
+                buffers_3.3km[na_values] <- NA # restore our NA values
+                  buffers_3.3km
+                    out$isolation_3.3km<-as.vector(unlist(buffers_3.3km))
 }
-# buffers_30km  <- parLapply(cl=cl,X=centroids,fun=rgeos::buffer,width=30000/2)     # calculate our 30 km regions
-#   m <- parLapply(cl=cl, buffers_30km, fun=raster::crop, x=raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif"))
-#     buffers_30km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_30km); rm(m);
-#       buffers_30km <- lReclass(buffers_30km,inValues=c(31,37,39,71,75))
+
+if(!grepl(names(out),pattern="isolation_30km")){
+      landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
+    s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
+      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteLocations,centroid=T) # calculate the centroid of each route
+  buffers_30km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=30000)      # calculate our 3.3 km regions
+    m <- mcmapply(buffers_30km, FUN=raster::crop, MoreArgs=list(x=landcover))
+      buffers_30km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_30km); rm(m);
+        buffers_30km <- lReclass(buffers_30km,inValues=c(31,37,39,71,75))
+          buffers_30km <- parLapply(cl=cl,buffers_30km,fun=landscapeAnalysis::rasterToPolygons)
+            # check for NA values
+            na_values<-as.vector(unlist(lapply(X=buffers_30km,FUN=is.na)))
+            if(sum(na_values)>0){
+              buffers_30km[na_values] <- buffers_30km[which(!na_values)[1]] # overwrite our NA values with something valid
+              buffers_30km<-lapply(X=buffers_30km,FUN=getSpPPolygonsLabptSlots)
+
+            } else {
+              buffers_30km<-lapply(X=buffers_30km,FUN=getSpPPolygonsLabptSlots)
+            }
+            # do our NN assessment
+            d <- function(x,na.rm=F){ o<-try(FNN::knn.dist(x,k=1)); if(class(o) != "try-error") { x <- o; } else { x[[i]] <- NA }; return(x)}
+            buffers_30km <- lapply(buffers_30km,FUN=d);rm(d);
+              buffers_30km <- lapply(buffers_30km, FUN=mean)
+                buffers_30km[na_values] <- NA # restore our NA values
+                    out$isolation_30km<-as.vector(unlist(buffers_30km))
+}
+
+write.csv(out,"site_level_parameters.csv",row.names=F)
