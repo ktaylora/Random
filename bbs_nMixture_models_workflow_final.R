@@ -16,20 +16,20 @@ processFocalRoute <- function(route=NULL){
   points  <- habitatWorkbench::sampleAroundVertices(s=route,maxDist=2200,n=250) # generate a number of sampling points around each route to derive our site-level landscape metrics
   buffers <- landscapeAnalysis::subsampleSurface(x=landcover,pts=points, width=750) # sample buffers from our source landcover dataset with the points derived from the current route
   # parse our buffers out into focal landcover types
-  buffers_grassland     <- landscapeAnalysis::lReclass(buffers,inValues=c(31,39,71,75))
+  buffers_grassland     <- landscapeAnalysis::lReclass(buffers,inValues=c(31,37,39,71,75))
   buffers_agriculture   <- landscapeAnalysis::lReclass(buffers,inValues=c(38,201,202,203,205,206,207,208,209,210,211,212))
   buffers_shrubland     <- landscapeAnalysis::lReclass(buffers,inValues=c(83,85,87,81,82))
   # calculate the requisite landscape metrics for each cover type
   metrics_grassland <- landscapeAnalysis::lCalculateLandscapeMetrics(buffers_grassland)[[1]] # need: total area and mean patch area
-    grassland_total_area <- unlist(lapply(metrics_grassland, function(x){ x$total.area }))
-      grassland_total_area <- ifelse(is.null(grassland_total_area),0,grassland_total_area)
-        grassland_total_area[is.na(grassland_total_area)] <- 0
-          grassland_total_area <- mean(grassland_total_area)
-    grassland_mean_patch_area <- unlist(lapply(metrics_grassland, function(x){ x$mean.patch.area }))
-      grassland_mean_patch_area[is.na(grassland_mean_patch_area)] <- 0
-        grassland_mean_patch_area <- ifelse(is.null(grassland_mean_patch_area),0,grassland_mean_patch_area)
-          grassland_mean_patch_area[is.na(grassland_mean_patch_area)] <- 0
-            grassland_mean_patch_area <- mean(grassland_mean_patch_area)
+  grassland_total_area <- unlist(lapply(metrics_grassland, function(x){ x$total.area }))
+    grassland_total_area <- ifelse(is.null(grassland_total_area),0,grassland_total_area)
+      grassland_total_area[is.na(grassland_total_area)] <- 0
+        grassland_total_area <- mean(grassland_total_area)
+  grassland_mean_patch_area <- unlist(lapply(metrics_grassland, function(x){ x$mean.patch.area }))
+    grassland_mean_patch_area[is.na(grassland_mean_patch_area)] <- 0
+      grassland_mean_patch_area <- ifelse(is.null(grassland_mean_patch_area),0,grassland_mean_patch_area)
+        grassland_mean_patch_area[is.na(grassland_mean_patch_area)] <- 0
+          grassland_mean_patch_area <- mean(grassland_mean_patch_area)
   metrics_agriculture   <- landscapeAnalysis::lCalculateLandscapeMetrics(buffers_agriculture) # need: total area
     agriculture_total_area <- unlist(lapply(metrics_agriculture, function(x){ x$total.area }))
       agriculture_total_area <- ifelse(is.null(agriculture_total_area),0,agriculture_total_area)
@@ -65,10 +65,8 @@ landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
   landcover <- extract(landcover,as(spTransform(s_bbsRoutes,CRS(projection(landcover))),'SpatialPointsDataFrame'),sp=T)
 s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% unique(landcover[!is.na(landcover$Final_LC_8bit),]$RTENO),] # make sure that our route data has landcover data available
 
-# finally, let's split our routes so that they can be processed in parallel on a multi
+# split our routes so that they can be processed in parallel on a multi-core machine
 s_bbsRoutes <- split(s_bbsRoutes,f=1:nrow(s_bbsRoutes))
-
 cat(" -- sampling and processing BBS routes\n");
-out_1_100   <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes[1:100])
-  out_101_200 <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes[101:200])
-    out_201_22n <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes[201:length(s_bbsRoutes)])
+out  <- parLapply(cl=cl,fun=processFocalRoute,X=s_bbsRoutes)
+  out <- do.call(rbind,out) # bind our list into a single data.frame
