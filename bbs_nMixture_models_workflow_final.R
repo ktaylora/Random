@@ -138,7 +138,6 @@ if(!grepl(names(out),pattern="isolation_30km")){
             if(sum(na_values)>0){
               buffers_30km[na_values] <- buffers_30km[which(!na_values)[1]] # overwrite our NA values with something valid
               buffers_30km<-lapply(X=buffers_30km,FUN=getSpPPolygonsLabptSlots)
-
             } else {
               buffers_30km<-lapply(X=buffers_30km,FUN=getSpPPolygonsLabptSlots)
             }
@@ -151,3 +150,10 @@ if(!grepl(names(out),pattern="isolation_30km")){
 }
 
 write.csv(out,"site_level_parameters.csv",row.names=F)
+
+# now let's fetch our BBS count data and associate it with the focal routes
+
+habitatWorkbench:::.fetchBbsStopData();
+t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F*.*.zip"));
+  t_counts <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAou("mallard"))),]
+lapply(split(t_counts, f=o$year), fun=subset,
