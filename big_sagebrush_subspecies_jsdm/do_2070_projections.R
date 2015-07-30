@@ -31,7 +31,7 @@ gfdl_cm3_2070_85_wyo_ens <- stackApply(stack(gfdl_cm3_2070_85_wyo_glm,gfdl_cm3_2
 unlink("/tmp/gf85bi70",recursive=T,force=T)
 # ip45
 utils::unzip("ip45bi70.zip", exdir="/tmp/ip45bi70/")
-ipsl_cm5b_lr_2070_45_wyo <- list.files("/tmp/gf45bi70",pattern="tif$",full.names=T)
+ipsl_cm5b_lr_2070_45_wyo <- list.files("/tmp/ip45bi70",pattern="tif$",full.names=T)
   ipsl_cm5b_lr_2070_45_wyo <- raster::stack(ipsl_cm5b_lr_2070_45_wyo[grepl(ipsl_cm5b_lr_2070_45_wyo,pattern=focal_vars)])
     ipsl_cm5b_lr_2070_45_wyo <- raster::crop(ipsl_cm5b_lr_2070_45_wyo,climate_variables,progress='text')
       names(ipsl_cm5b_lr_2070_45_wyo) <- names(climate_variables) # the order of the files are in agreement
@@ -50,7 +50,7 @@ ipsl_cm5b_lr_2070_85_wyo <- list.files("/tmp/ip85bi70",pattern="tif$",full.names
 ipsl_cm5b_lr_2070_85_wyo_glm <- predict(ipsl_cm5b_lr_2070_85_wyo,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
 ipsl_cm5b_lr_2070_85_wyo_rf  <- 1-predict(ipsl_cm5b_lr_2070_85_wyo,wyomingensis_rf_unif[[1]],type='prob',progress='text')
 ipsl_cm5b_lr_2070_85_wyo_ens <- stackApply(stack(ipsl_cm5b_lr_2070_85_wyo_glm,ipsl_cm5b_lr_2070_85_wyo_rf),fun=mean,indices=1,progress='text')
-unlink("/tmp/gf85bi70",recursive=T,force=T)
+unlink("/tmp/ip85bi70",recursive=T,force=T)
 # ac45
 utils::unzip("ac45bi70.zip", exdir="/tmp/ac45bi70/")
 access_1_0_2070_45_wyo <- list.files("/tmp/ac45bi70",pattern="tif$",full.names=T)
@@ -83,7 +83,7 @@ inmcm4_2070_45 <- list.files("/tmp/in45bi70",pattern="tif$",full.names=T)
 inmcm4_2070_45_glm <- predict(inmcm4_2070_45,wyomingensis_glm_unif[[1]][[1]],type='resp',progress='text')
 inmcm4_2070_45_rf  <- 1-predict(inmcm4_2070_45,wyomingensis_rf_unif[[1]],type='prob',progress='text')
 inmcm4_2070_45_ens <- stackApply(stack(inmcm4_2070_45_glm,inmcm4_2070_45_rf),fun=mean,indices=1,progress='text')
-unlink("/tmp/ac45bi70",recursive=T,force=T)
+unlink("/tmp/in45bi70",recursive=T,force=T)
 # in85
 utils::unzip("in85bi70.zip", exdir="/tmp/in85bi70/")
 inmcm4_2070_85_wyo <- list.files("/tmp/in85bi70",pattern="tif$",full.names=T)
@@ -121,7 +121,7 @@ gfdl_cm3_2070_85_tri_ens <- stackApply(stack(gfdl_cm3_2070_85_tri_glm,gfdl_cm3_2
 unlink("/tmp/gf85bi70",recursive=T,force=T)
 # ip45
 utils::unzip("ip45bi70.zip", exdir="/tmp/ip45bi70/")
-ipsl_cm5b_lr_2070_45_tri <- list.files("/tmp/gf45bi70",pattern="tif$",full.names=T)
+ipsl_cm5b_lr_2070_45_tri <- list.files("/tmp/ip45bi70",pattern="tif$",full.names=T)
   ipsl_cm5b_lr_2070_45_tri <- raster::stack(ipsl_cm5b_lr_2070_45_tri[grepl(ipsl_cm5b_lr_2070_45_tri,pattern=focal_vars)])
     ipsl_cm5b_lr_2070_45_tri <- raster::crop(ipsl_cm5b_lr_2070_45_tri,climate_variables,progress='text')
       names(ipsl_cm5b_lr_2070_45_tri) <- names(climate_variables) # the order of the files are in agreement

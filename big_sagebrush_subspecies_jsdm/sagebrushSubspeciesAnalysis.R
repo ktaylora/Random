@@ -369,7 +369,7 @@ vaseyana_current_quantiles     <- extractDensities(ens_vaseyana_current,p=c(0.5,
 
 intersect_p50_current <- rgeos::gIntersection(rgeos::gIntersection(tridentata_current_quantiles[[1]],wyomingensis_current_quantiles[[1]])@polyobj,vaseyana_current_quantiles[[1]])@polyobj
 intersect_p50_wyo_tri_current <- rgeos::gIntersection(tridentata_current_quantiles[[1]],wyomingensis_current_quantiles[[1]])@polyobj
-intersect_p75_current <- rgeos::gIntersection(rgeos::gIntersection(tridentata_current_quantiles[[2]],wyomingensis_current_quantiles[[2]])@polyobj,vaseyana_current_quantiles[[2]])@polyobj
+#intersect_p75_current <- rgeos::gIntersection(rgeos::gIntersection(tridentata_current_quantiles[[2]],wyomingensis_current_quantiles[[2]])@polyobj,vaseyana_current_quantiles[[2]])@polyobj
 
 unique_p50_current_wyomingensis <- rgeos::gDifference(wyomingensis_current_quantiles[[1]],tridentata_current_quantiles[[1]]) # wyomingensis has greater range
   unique_p50_current_wyomingensis <- rgeos::gDifference(unique_p50_current_wyomingensis, vaseyana_current_quantiles[[1]])
@@ -413,7 +413,7 @@ box(); grid(lty=1,col="#00000030")
 legend("topright", c("wyomingensis","tridentata","vaseyana"), cex=0.8, fill=c("#003300","#197519","#80B280"),bg = "white");
 
 # response plots for GLMs
-png("/Users/ktaylora/Desktop/wyo_response_plots_glm.png",height=1200,width=800)
+png(paste(sep="/",HOME,"/Desktop/wyo_response_plots_glm.png"),height=1200,width=800)
   par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
     for(v in vars){
       responsePlot(wyomingensis_glm_unif,var=v)
@@ -423,29 +423,29 @@ png("/Users/ktaylora/Desktop/wyo_response_plots_glm.png",height=1200,width=800)
       lines(y=out$y, x=out$x,lwd=1.8,col="blue",main="",xlab=as.character(v))
     }
       graphics.off()
-png("/Users/ktaylora/Desktop/tri_response_plots_glm.png",height=1200,width=800)
+png(paste(sep="/",HOME,"/Desktop/tri_response_plots_glm.png"),height=1200,width=800)
     par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
       for(v in vars){ responsePlot(tridentata_glm_unif,var=v) }
         graphics.off()
-png("/Users/ktaylora/Desktop/vas_response_plots_glm.png",height=1200,width=800)
+png(paste(sep="/",HOME,"/Desktop/vas_response_plots_glm.png"),height=1200,width=800)
   par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
     for(v in vars){ responsePlot(vaseyana_glm_unif,var=v) }
       graphics.off()
 
 # response plots for RFs
-png("/Users/ktaylora/Desktop/wyomingnesis_response_plots_rf.png",height=1200,width=800)
+png(paste(sep="/",HOME,"/Desktop/wyomingnesis_response_plots_rf.png"),height=1200,width=800)
   par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
     for(v in vars){
 
     }
 graphics.off()
-png("/Users/ktaylora/Desktop/tridentata_response_plots_rf.png",height=1200,width=800)
+png(paste(sep="/",HOME,"/Desktop/tridentata_response_plots_rf.png"),height=1200,width=800)
   par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
     for(v in vars){
       partialPlot(tridentata_rf_unif[[1]],x.var=as.character(v),pred.data=na.omit(tridentata_glm_unif[[1]][[1]]$data),which.class=1,lwd=2,col="red",main="",xlab=as.character(v))
     }
 graphics.off()
-png("/Users/ktaylora/Desktop/vaseyana_response_plots_rf.png",height=1200,width=800)
+png(paste(sep="/",HOME,"/Desktop/vaseyana_response_plots_rf.png"),height=1200,width=800)
   par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
     for(v in vars){
       partialPlot(vaseyana_rf_unif[[1]],x.var=as.character(v),pred.data=na.omit(vaseyana_glm_unif[[1]][[1]]$data),which.class=1,lwd=2,col="red",main="",xlab=as.character(v))
@@ -454,12 +454,6 @@ graphics.off()
 
 #source("do_2050_projections.R")
 #source("do_2070_projections.R")
-
-## 2070
-
-
-
-
 
 # cat(" -- projecting model rasters\n")
 #   r_glm_wyomingensis_current <- predict(climate_variables, wyomingensis_glm[[1]][[1]], type='resp', progress='text')
