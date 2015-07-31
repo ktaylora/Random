@@ -247,13 +247,68 @@ text(x=-1500000,y=1300000,"2070 (RCP 8.5)",cex=0.85)
 graphics.off()
 
 # Figure 7 -- step plots for latitude / elevation under current climate conditions
+require(gglot2)
+require(reshape2)
+require(gridExtra)
+require(grid)
+
+grid_arrange_shared_legend <- function(...) {
+    plots <- list(...)
+    g <- ggplotGrob(plots[[1]] + theme(legend.position="top"))$grobs
+    legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+    lheight <- sum(legend$height)
+    grid.arrange(
+        do.call(arrangeGrob, lapply(plots, function(x)
+            x + theme(legend.position="none"))),
+        legend,
+        ncol = 1,
+        heights = unit.c(unit(1, "npc") - lheight, lheight))
+}
+
 elevation <- raster("/media/ktaylora/80C0-4F29/lf_elev1km/w001001x.adf")
 
 p_current_elev_agreement <- rasterToPoints(rasterize(spTransform(spsample(intersect_p50_current,n=15000,type="random"),CRS(projection(elevation))),elevation),spatial=T)
-  p_current_elev_agreement <- extract(p_current_elev_agreement,elevation,df=T)[,2]
+  p_current_elev_agreement <- extract(elevation,p_current_elev_agreement,df=T)[,2]
 p_current_elev_tri <- rasterToPoints(rasterize(spTransform(spsample(ens_tridentata_current,n=15000,type="random"),CRS(projection(elevation))),elevation),spatial=T)
   p_current_elev_tri <- extract(elevation,p_current_elev_tri,df=T)[,2]
 p_current_elev_wyo <- rasterToPoints(rasterize(spTransform(spsample(ens_wyomingensis_current,n=15000,type="random"),CRS(projection(elevation))),elevation),spatial=T)
   p_current_elev_wyo <- extract(elevation,p_current_elev_wyo,df=T)[,2]
 p_current_elev_vas <- rasterToPoints(rasterize(spTransform(spsample(ens_vaseyana_current,n=15000,type="random"),CRS(projection(elevation))),elevation),spatial=T)
   p_current_elev_vas <- extract(elevation,p_current_elev_vas,df=T)[,2]
+
+df <- data.frame(agreement=sample(p_current_elev_agreement,5000,replace=T),
+                 tridentata=sample(p_current_elev_tri,5000,replace=T),
+                 vaseyana=sample(p_current_elev_vas,5000,replace=T),
+                 wyomingensis=sample(p_current_elev_wyo,5000))
+df <- melt(df,variable.name="subspecies",value.name="elevation")
+p1 <- ggplot(df, aes(factor(subspecies), elevation)) +
+             geom_boxplot(aes(x=agreement, y=elevation, color="Agreement")) +
+             geom_boxplot(aes(x=tridentata, y=elevation, color="Tridentata")) +
+             geom_boxplot(aes(x=vaseyana, y=elevation,color="Vaseyana")) +
+             geom_boxplot(aes(x=wyomingensis, y=elevation,color="Wyomingensis")) +
+             #geom_vline(xintercept=mean(sample(lat_elev_current_glm_90@coords[,2],500)), colour="grey", linetype = "longdash") +
+             xlab("Subspecies") + ylab("Elevation") +
+             theme_bw() + theme(legend.title=element_blank())
+
+p_current_lat_agreement <- spsample(intersect_p50_current,n=15000,type="random")@coords[,2]
+p_current_lat_tri <- spsample(ens_tridentata_current,n=15000,type="random")@coords[,2]
+p_current_lat_wyo <- spsample(ens_wyomingensis_current,n=15000,type="random")@coords[,2]
+p_current_lat_vas <- spsample(ens_vaseyana_current,n=15000,type="random")@coords[,2]
+
+df <- data.frame(agreement=sample(p_current_lat_agreement,5000,replace=T),
+                 tridentata=sample(p_current_lat_tri,5000,replace=T),
+                 vaseyana=sample(p_current_lat_wyo,5000,replace=T),
+                 wyomingensis=sample(p_current_lat_wyo,5000))
+
+df <- melt(df,variable.name="subspecies",value.name="latitude")
+
+p2 <-<- ggplot(df, aes(factor(subspecies), latitude)) +
+            geom_boxplot(aes(x=agreement, y=latitude, color="Agreement")) +
+            geom_boxplot(aes(x=tridentata, y=latitude, color="Tridentata")) +
+            geom_boxplot(aes(x=vaseyana, y=latitude,color="Vaseyana")) +
+            geom_boxplot(aes(x=wyomingensis, y=latitude,color="Wyomingensis")) +
+            #geom_vline(xintercept=mean(sample(lat_elev_current_glm_90@coords[,2],500)), colour="grey", linetype = "longdash") +
+            xlab("Subspecies") + ylab("Latitude") +
+            theme_bw() + theme(legend.title=element_blank())
+
+grid_arrange_shared_legend(p1, p2)
