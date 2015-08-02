@@ -9,7 +9,7 @@ require(rgdal)
 #
 # spatialSmoothing()
 # Implements a gaussian smoothing window as implemented by Jeff Evans 2014 (see: http://evansmurphy.wix.com/evansspatial#!spatial-smoothing/ch1)
-#l.google.com/
+#
 
 spatialSmoothing <- function(x, s=1, d=5, filename=FALSE, ...) {
     if (!require(sp)) stop("sp PACKAGE MISSING")

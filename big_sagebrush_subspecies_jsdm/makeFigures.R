@@ -313,6 +313,21 @@ p2 <-<- ggplot(df, aes(factor(subspecies), latitude)) +
 
 grid_arrange_shared_legend(p1, p2)
 
+## Prepare current climate conditions for boxplots
+require(raster)
+current_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/worldclim/current",pattern="bil$",full.names=T)
+  current_climate <- raster::stack(current_climate[grepl(current_climate,pattern="bio_1[.]|bio_11[.]|bio_12[.]|bio_15[.]|bio_18[.]")])
+
+# ex: scenario="RCP_45_2050", subset="gain", value="25"
+data.frame(scenario=NA,subset=NA,value=NA)
+
+rcp_45_2050_climate_gf
+rcp_45_2050_climate_in
+rcp_45_2050_climate_ip
+rcp_85_2050_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="bil$",full.names=T)
+rcp_45_2070_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="bil$",full.names=T)
+rcp_85_2070_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="bil$",full.names=T)
+
 ## Figure 7 -- difference plots for each subspecies
 t_crs <- CRS(projection("+init=epsg:2163"))
 
@@ -332,6 +347,17 @@ plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030")
 text("A",cex=1.4,y=1300000,x=-1700000)
+
+# extract for boxplots
+
+focalVars <- c("01[.]tif|11[.]tif|12[.]tif|15[.]tif|18[.]tif")
+zips_path <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="zip$",full.names=T)
+rcp_45_2050_climate_ac <- zips_path[grepl(zips_path,pattern="/ac*.*45bi50*")]
+  names <- unzip(rcp_45_2050_climate_ac,list=T)$Name;
+    names <- names[grepl(names,pattern=focalVars)];
+  unlink("/tmp/focal_zip",force=T,recursive=T);
+  unzip(rcp_45_2050_climate_ac,files=names,overwrite=T,exdir="/tmp/focal_zip")
+    rcp_45_2050_climate_ac <- raster::stack(list.files("/tmp/focal_zip",pattern="tif$",full.names=T));
 
 # ssp. wyomingensis 2050 (4.5)
 
