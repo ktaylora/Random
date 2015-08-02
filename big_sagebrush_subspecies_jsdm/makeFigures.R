@@ -312,3 +312,186 @@ p2 <-<- ggplot(df, aes(factor(subspecies), latitude)) +
             theme_bw() + theme(legend.title=element_blank())
 
 grid_arrange_shared_legend(p1, p2)
+
+## Figure 7 -- difference plots for each subspecies
+t_crs <- CRS(projection("+init=epsg:2163"))
+
+# ssp. tridentata 2050 (4.5)
+
+gain <- rgeos::gDifference(ens_tridentata_2050_rcp_45,ens_tridentata_current)
+loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2050_rcp_45)
+
+dev.new(width=13.265502,height=4.890797)
+par(mfrow=c(1,3))
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030")
+text("A",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. wyomingensis 2050 (4.5)
+
+gain <- rgeos::gDifference(ens_wyomingensis_2050_rcp_45,ens_wyomingensis_current)
+loss <- rgeos::gDifference(ens_wyomingensis_current,ens_wyomingensis_2050_rcp_45)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("B",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. vaseyana 2050 (4.5)
+
+gain <- rgeos::gDifference(ens_vaseyana_2050_rcp_45,ens_vaseyana_current)
+loss <- rgeos::gDifference(ens_vaseyana_current,ens_vaseyana_2050_rcp_45)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("C",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. tridentata 2050 (8.5)
+
+gain <- rgeos::gDifference(ens_tridentata_2050_rcp_85,ens_tridentata_current)
+loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2050_rcp_85)
+
+dev.new(width=13.265502,height=4.890797)
+par(mfrow=c(1,3))
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("D",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. wyomingensis 2050 (8.5)
+
+gain <- rgeos::gDifference(ens_wyomingensis_2050_rcp_85,ens_wyomingensis_current)
+loss <- rgeos::gDifference(ens_wyomingensis_current,ens_wyomingensis_2050_rcp_85)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("E",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. vaseyana 2050 (8.5)
+
+gain <- rgeos::gDifference(ens_vaseyana_2050_rcp_85,ens_vaseyana_current)
+loss <- rgeos::gDifference(ens_vaseyana_current,ens_vaseyana_2050_rcp_85)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("F",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. tridentata 2070 (4.5)
+
+gain <- rgeos::gDifference(ens_tridentata_2070_rcp_45,ens_tridentata_current)
+loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2070_rcp_45)
+
+dev.new(width=13.265502,height=4.890797)
+par(mfrow=c(1,3))
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("G",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. wyomingensis 2070 (4.5)
+
+gain <- rgeos::gDifference(ens_wyomingensis_2070_rcp_45,ens_wyomingensis_current)
+loss <- rgeos::gDifference(ens_wyomingensis_current,ens_wyomingensis_2070_rcp_45)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("H",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. vaseyana 2070 (4.5)
+
+gain <- rgeos::gDifference(ens_vaseyana_2070_rcp_45,ens_vaseyana_current)
+loss <- rgeos::gDifference(ens_vaseyana_current,ens_vaseyana_2070_rcp_45)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("I",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. tridentata 2070 (8.5)
+
+gain <- rgeos::gDifference(ens_tridentata_2070_rcp_85,ens_tridentata_current)
+loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2070_rcp_85)
+
+dev.new(width=13.265502,height=4.890797)
+par(mfrow=c(1,3))
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("J",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. wyomingensis 2070 (8.5)
+
+gain <- rgeos::gDifference(ens_wyomingensis_2070_rcp_85,ens_wyomingensis_current)
+loss <- rgeos::gDifference(ens_wyomingensis_current,ens_wyomingensis_2070_rcp_85)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("K",cex=1.4,y=1300000,x=-1700000)
+
+# ssp. vaseyana 2070 (8.5)
+
+gain <- rgeos::gDifference(ens_vaseyana_2070_rcp_85,ens_vaseyana_current)
+loss <- rgeos::gDifference(ens_vaseyana_current,ens_vaseyana_2070_rcp_85)
+
+plot(main=NA,spTransform(boundaries,t_crs),col="white",
+     border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
+plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
+plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
+plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
+box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
+text("L",cex=1.4,y=1300000,x=-1700000)
