@@ -74,10 +74,10 @@ require(habitatWorkbench)
 require(parallel); cl <- makeCluster(getOption("cl.cores", 7),outfile='outfile.log')
 
 # read-in our local (study area) routes
-t_routes_bcr1819 <<- read.csv("/home/ktaylora/PLJV/species_data/bbs_data/bbs_routes_bcr1819.csv")
+t_routes_bcr1819 <<- read.csv("/home/ktaylora/PLJV/species_data/bbs_data/bbs_routes_bcr1819.csv") # pre-define the route numbers needed in an external GIS
 
 # read-in the national bbs routes data and parse accordingly
-data(bbsRoutes); s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_routes_bcr1819$RTENO,]
+data(bbsRoutes); s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_routes_bcr1819$RTENO,] # RTENO : [STATE(2-digit)][ROUTE(3-digit)]
 
 # ensure we have adequate land cover data for our bbs routes
 landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
@@ -154,6 +154,30 @@ write.csv(out,"site_level_parameters.csv",row.names=F)
 # now let's fetch our BBS count data and associate it with the focal routes
 
 habitatWorkbench:::.fetchBbsStopData();
-t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F*.*.zip"));
-  t_counts <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAou("mallard"))),]
-lapply(split(t_counts, f=o$year), fun=subset,
+t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F.*.zip")); # ROUTES here are designated by their 3-digit code only. See the accompanying statenum column
+  t_counts <- t_counts[t_counts$year %in% 1999:2014,]
+
+route_code <- as.numeric(substring(s_bbsRoutes$RTENO, nchar(s_bbsRoutes$RTENO)-2,nchar(s_bbsRoutes$RTENO))) # 3-digit route code
+state_code <- as.numeric(substring(s_bbsRoutes$RTENO, 1,nchar(s_bbsRoutes$RTENO)-3)) # 2-digit state code
+
+t_counts <- t_counts[t_counts$statenum %in% state_code & t_counts$Route %in% route_code,] # parse our route counts to routes within the focal region
+  t_counts$RTENO <- paste(sprintf("%02d",t_counts$statenum),sprintf("%03d",t_counts$Route),sep="")
+
+s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,] # parse out the 'in region' routes we have count data for
+   t_counts <- t_counts[t_counts$RTENO %in% s_bbsRoutes$RTENO,]    # reciprocate
+
+# find the routes that have non-zero counts for our focal species, keeping the zero routes.
+nonZero <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))),]
+   zero <- t_counts[!(t_counts$RTENO %in% nonZero$RTENO),]
+     zero[,n[grepl(n,pattern="Stop")]] <- 0
+       zero <- zero[!duplicated(zero$RTENO),] # remove duplicate zero values for routes
+         zero$AOU <- as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))
+
+   t_counts <- rbind(nonZero,zero);rm(list=c('nonZero','zero'))
+s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,]
+
+# transpose counts by year
+for(y in sort(unique(t_counts$year))){
+  cnts_focal <- t_counts[t_counts$year == 1999,n[grepl(n,pattern="Stop")]]
+  paste("y",1999,tolower(names(cnts_focal)),sep=".")
+}
