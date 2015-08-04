@@ -167,6 +167,7 @@ s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,] # parse out t
    t_counts <- t_counts[t_counts$RTENO %in% s_bbsRoutes$RTENO,]    # reciprocate
 
 # find the routes that have non-zero counts for our focal species, keeping the zero routes.
+n <- names(t_counts)
 nonZero <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))),]
    zero <- t_counts[!(t_counts$RTENO %in% nonZero$RTENO),]
      zero[,n[grepl(n,pattern="Stop")]] <- 0
@@ -174,10 +175,40 @@ nonZero <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAo
          zero$AOU <- as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))
 
    t_counts <- rbind(nonZero,zero);rm(list=c('nonZero','zero'))
+     t_counts <- t_counts[!duplicated(t_counts),] # let's really make sure we don't have duplicate entries in the table, eh?
 s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,]
 
 # transpose counts by year
+output <- data.frame()
+routes <- unique(t_counts$RTENO)
 for(y in sort(unique(t_counts$year))){
-  cnts_focal <- t_counts[t_counts$year == 1999,n[grepl(n,pattern="Stop")]]
-  paste("y",1999,tolower(names(cnts_focal)),sep=".")
-}
+  # parse stops for the focal year
+  cnts_focal <- data.frame(RTENO=routes,NA)
+  counts <- as.numeric(rowSums(t_counts[t_counts$year == y,n[grepl(n,pattern="Stop")]],na.rm=F))
+    counts <- counts[!duplicated(t_counts[t_counts$year == y,"RTENO"])]
+  stop_routes <- t_counts[t_counts$year == y,"RTENO"]
+      cnts_focal[match(cnts_focal$RTENO,stop_routes,nomatch=F),2] <- counts
+        names(cnts_focal) <- c("RTENO",paste("cnt",y,sep="."))
+          cnts_focal <- cnts_focal[!duplicated(cnts_focal$RTENO),]
+  # merge columns
+  if(!nrow(output)){
+    output <- cnts_focal
+  } else {
+    output <- cbind(output,unique(cnts_focal))
+  }
+}; names <- names(output); output <- cbind(RTENO=routes,output[,names[grepl(names,pattern="cnt[.]")]])
+
+# bind to our sampled landscape metrics
+out <- read.csv("site_level_parameters.csv")
+  out <- out[!duplicated(out$route),]
+    out <- out[out$route %in% output$RTENO,]
+      out <- out[order(out$route),]
+      output <- output[output$RTENO %in% out$route,]
+        output <- output[order(output$RTENO),]
+          out <- cbind(out[match(out$route,output$RTENO),],output)
+            out<-out[,!duplicated(names(out))]
+              if(sum(out$route != out$RTENO) > 0){ cat("error -- failed to match routes between tables.")}
+                out <- out[,names(out) != "RTENO"]
+
+# for show, we can merge our tabular data into our spatial data
+s<-s_bbsRoutes; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
