@@ -214,7 +214,7 @@ out <- read.csv("site_level_parameters.csv")
                 out <- out[,names(out) != "RTENO"]
 
 # for show, we can merge our tabular data into our spatial data
-s<-s_bbsRoutes; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
+s<-s_bbsRoutes[!duplicated(s_bbsRoutes@data$RTENO),]; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
 # GRAB ACCOMPANYING TABULAR DATA FOR FITTING COEFFICIENTS FOR DETECTION
 detection_covariates <- list()
 # calculate noise and cars present
@@ -258,14 +258,28 @@ detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t
 
 # calculate a dummy variable representing years in the time-series (one for each route)
 detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(years))],nrow(t_data_full)),nrow=nrow(t_data_full))
-names(detection_covariates) <- c("noise","cars","timeTrend") # name our list for compatibility with 'unmarked'
+names(detection_covariates) <- c("noise","cars","timeTrend_") # name our list for compatibility with 'unmarked'
 
 # build a model in 'unmarked'
 require(unmarked)
 t_pco <- unmarked::unmarkedFramePCO(y=out[,8:ncol(out)],siteCovs=out[,2:7], obsCovs=detection_covariates, numPrimary=length(1999:2014))
 
+# marginally better than null model
 m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
                      gammaformula=~1,
                      omegaformula=~1,
                      pformula=~noise+cars+timeTrend,
                      data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
+
+# worse than null model
+# m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
+#                     gammaformula=~1,
+#                     omegaformula=~1,
+#                     pformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
+#                     data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
+
+# pseudo-rsquared
+model_sse <- sum(as.vector(m_lbcu@data@y-fitted(m_lbcu))^2, na.rm=T)
+  null=ceiling(median(as.numeric(unlist(na.omit(out[,grepl(names(out),pattern="cnt")]))))) # just take the median as a null count model
+    null_sse <- sum((out[,grepl(names(out),pattern="cnt")]-null)^2,na.rm=T)
+cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
