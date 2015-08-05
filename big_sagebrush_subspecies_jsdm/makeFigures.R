@@ -359,6 +359,15 @@ rcp_45_2050_climate_ac <- zips_path[grepl(zips_path,pattern="/ac*.*45bi50*")]
   unzip(rcp_45_2050_climate_ac,files=names,overwrite=T,exdir="/tmp/focal_zip")
     rcp_45_2050_climate_ac <- raster::stack(list.files("/tmp/focal_zip",pattern="tif$",full.names=T));
 
+
+# species GAP records
+wyo_gap <- spTransform(readOGR("/home/ktaylora/Products/uw/big_sagebrush_subspp_analysis/vectors","wyomingensis_gap_records",verbose=F),t_crs)
+  wyo_gap <- wyo_gap[wyo_gap$resp==1,]
+tri_gap <- spTransform(readOGR("/home/ktaylora/Products/uw/big_sagebrush_subspp_analysis/vectors","tridentata_gap_records",verbose=F),t_crs)
+  tri_gap <- tri_gap[tri_gap$resp==1,]
+vas_gap <- spTransform(readOGR("/home/ktaylora/Products/uw/big_sagebrush_subspp_analysis/vectors","vaseyana_gap_records",verbose=F),t_crs)
+  vas_gap <- vas_gap[vas_gap$resp==1,]
+
 # ssp. wyomingensis 2050 (4.5)
 
 gain <- rgeos::gDifference(ens_wyomingensis_2050_rcp_45,ens_wyomingensis_current)
@@ -369,6 +378,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(wyo_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("B",cex=1.4,y=1300000,x=-1700000)
@@ -383,6 +393,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(vas_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("C",cex=1.4,y=1300000,x=-1700000)
@@ -400,6 +411,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(tri_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("D",cex=1.4,y=1300000,x=-1700000)
@@ -414,6 +426,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(wyo_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("E",cex=1.4,y=1300000,x=-1700000)
@@ -428,6 +441,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(vas_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("F",cex=1.4,y=1300000,x=-1700000)
@@ -445,6 +459,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(tri_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("G",cex=1.4,y=1300000,x=-1700000)
@@ -459,6 +474,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(wyo_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("H",cex=1.4,y=1300000,x=-1700000)
@@ -473,6 +489,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(vas_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("I",cex=1.4,y=1300000,x=-1700000)
@@ -490,6 +507,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_tridentata_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(tri_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("J",cex=1.4,y=1300000,x=-1700000)
@@ -504,6 +522,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_wyomingensis_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(wyo_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("K",cex=1.4,y=1300000,x=-1700000)
@@ -518,6 +537,7 @@ plot(main=NA,spTransform(boundaries,t_crs),col="white",
 plot(spTransform(ens_vaseyana_current,t_crs), border=NA, col="#006600",add=T)
 plot(spTransform(gain,t_crs),border=NA,col="#0000FF",add=T)
 plot(spTransform(loss,t_crs),border=NA,col="#CC0000",add=T)
+plot(vas_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("L",cex=1.4,y=1300000,x=-1700000)
