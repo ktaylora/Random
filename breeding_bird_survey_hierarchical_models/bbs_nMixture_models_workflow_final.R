@@ -99,7 +99,8 @@ if(!file.exists("site_level_parameters.csv")){
   out <- read.csv("site_level_parameters.csv")
 }
 
-## calculate our isolation metrics (at 3.3 and 30 km2 scales)
+## CALCULATE OUR ISOLATION METRICS AT 1650 AND 30000 METER BUFFER DISTANCES
+
 if(!grepl(names(out),pattern="isolation_3.3")){
       landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
     s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
@@ -154,7 +155,7 @@ if(!grepl(names(out),pattern="isolation_30km")){
 
 write.csv(out,"site_level_parameters.csv",row.names=F)
 
-# now let's fetch our BBS count data and associate it with the focal routes
+# FETCH BBS COUNT DATA AND ASSOCIATE IT WITH THE FOCAL ROUTES
 
 habitatWorkbench:::.fetchBbsStopData();
 t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F.*.zip")); # ROUTES here are designated by their 3-digit code only. See the accompanying statenum column
@@ -233,6 +234,7 @@ for(y in 1999:2014){
   t_focal <- as.matrix(t[t$Year == y,c(3,4)])
     colnames(t_focal) <- paste(names(t)[3:4],y,sep=".")
     rownames(t_focal) <- t[t$Year == y,]$RTENO
+    t_focal <- t_focal[!duplicated(rownames(t_focal)),] # ensure we don't have duplicate routes
   # assign data to those routes that actually have observations this year
   t_data[which(rownames(t_data) %in% rownames(t_focal)),] <- t_focal[which(rownames(t_focal) %in% rownames(t_data)),]
     colnames(t_data) <- paste(names(t)[3:4],y,sep=".")
@@ -255,3 +257,13 @@ detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t
 # calculate a dummy variable representing years in the time-series (one for each route)
 detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(years))],nrow(t_data_full)),nrow=nrow(t_data_full))
 names(detection_covariates) <- c("noise","cars","timeTrend") # name our list for compatibility with 'unmarked'
+
+# build a model in 'unmarked'
+require(unmarked)
+t_pco <- unmarked::unmarkedFramePCO(y=out[,8:ncol(out)],siteCovs=out[,2:7], obsCovs=detection_covariates, numPrimary=length(1999:2014))
+
+m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
+                     gammaformula=~1,
+                     omegaformula=~1,
+                     pformula=~noise+cars+timeTrend,
+                     data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
