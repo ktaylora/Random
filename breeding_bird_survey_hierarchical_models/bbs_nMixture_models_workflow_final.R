@@ -3,9 +3,12 @@
 # Author: Kyle Taylor (kyle.taylor@pljv.org)
 #
 
+HOME <- Sys.getenv("HOME")
+
 #
 # calculate site-level landscape metrics for the focal route [parallelized]
 #
+
 processFocalRoute <- function(route=NULL){
   require(landscapeAnalysis)
   require(habitatWorkbench)
@@ -197,8 +200,7 @@ for(y in sort(unique(t_counts$year))){
     output <- cbind(output,unique(cnts_focal))
   }
 }; names <- names(output); output <- cbind(RTENO=routes,output[,names[grepl(names,pattern="cnt[.]")]])
-
-# bind to our sampled landscape metrics
+# BIND TO OUR LANDSCAPE METRICS TO MAKE A FULL TABLE OF SITE-LEVEL COVARIATES
 out <- read.csv("site_level_parameters.csv")
   out <- out[!duplicated(out$route),]
     out <- out[out$route %in% output$RTENO,]
@@ -212,7 +214,7 @@ out <- read.csv("site_level_parameters.csv")
 
 # for show, we can merge our tabular data into our spatial data
 s<-s_bbsRoutes; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
-# grab accompanying tabular data for fitting coefficients for detection
+# GRAB ACCOMPANYING TABULAR DATA FOR FITTING COEFFICIENTS FOR DETECTION
 detection_covariates <- list()
 # calculate noise and cars present
 habitatWorkbench:::.fetchVehicleData()
@@ -243,3 +245,13 @@ for(y in 1999:2014){
 # assign to a named list that 'unmarked' will understand
 detection_covariates[[1]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Noise")]) # Noise Observed at Routes
 detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Stop")])  # Number of Cars Observed at Routes
+# calculate distance to transmission lines along each route
+# -- removed this because it doesn't vary across time.  Consider using it as a site-level covariate, perhaps
+# require(raster)
+# distanceToTrans <- raster(paste(HOME,"/PLJV/infrastructure/products/bcr_18_19_distanceToTransmissionLines.tif",sep=""))
+#               t <- raster::extract(distanceToTrans,spTransform(s_bbsRoutes,CRS(projection(distanceToTrans)),df=T,progress='text')
+#                 t <- unlist(lapply(t,FUN=mean))
+
+# calculate a dummy variable representing years in the time-series (one for each route)
+detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(years))],nrow(t_data_full)),nrow=nrow(t_data_full))
+names(detection_covariates) <- c("noise","cars","timeTrend") # name our list for compatibility with 'unmarked'
