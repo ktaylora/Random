@@ -80,7 +80,7 @@ require(parallel); cl <- makeCluster(getOption("cl.cores", 7),outfile='outfile.l
 t_routes_bcr1819 <<- read.csv("/home/ktaylora/PLJV/species_data/bbs_data/bbs_routes_bcr1819.csv") # pre-define the route numbers needed in an external GIS
 
 # read-in the national bbs routes data and parse accordingly
-data(bbsRoutes); s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_routes_bcr1819$RTENO,] # RTENO : [STATE(2-digit)][ROUTE(3-digit)]
+# data(bbsRoutes); s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_routes_bcr1819$RTENO,] # RTENO : [STATE(2-digit)][ROUTE(3-digit)]
 
 # ensure we have adequate land cover data for our bbs routes
 landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
@@ -104,7 +104,7 @@ if(!file.exists("site_level_parameters.csv")){
 if(!grepl(names(out),pattern="isolation_3.3")){
       landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
     s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
-      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteLocations,centroid=T) # calculate the centroid of each route
+      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteCoords,centroid=T) # calculate the centroid of each route
   buffers_3.3km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=3300/2)      # calculate our 3.3 km regions
     m <- mcmapply(buffers_3.3km, FUN=raster::crop, MoreArgs=list(x=landcover))
       buffers_3.3km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_3.3km); rm(m);
@@ -131,7 +131,7 @@ if(!grepl(names(out),pattern="isolation_3.3")){
 if(!grepl(names(out),pattern="isolation_30km")){
       landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
     s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
-      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteLocations,centroid=T) # calculate the centroid of each route
+      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteCoords,centroid=T) # calculate the centroid of each route
   buffers_30km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=30000)      # calculate our 3.3 km regions
     m <- mcmapply(buffers_30km, FUN=raster::crop, MoreArgs=list(x=landcover))
       buffers_30km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_30km); rm(m);
