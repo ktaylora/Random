@@ -253,6 +253,8 @@ detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t
 # distanceToTrans <- raster(paste(HOME,"/PLJV/infrastructure/products/bcr_18_19_distanceToTransmissionLines.tif",sep=""))
 #               t <- raster::extract(distanceToTrans,spTransform(s_bbsRoutes,CRS(projection(distanceToTrans)),df=T,progress='text')
 #                 t <- unlist(lapply(t,FUN=mean))
+# NOTE: An 'observer' variable is conspicuously missing here on probability of detection.  I don't want to make a flat assumption in extrapolating observer bias
+# in geographic space.  Let's see how well the model does without it.
 
 # calculate a dummy variable representing years in the time-series (one for each route)
 detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(years))],nrow(t_data_full)),nrow=nrow(t_data_full))
