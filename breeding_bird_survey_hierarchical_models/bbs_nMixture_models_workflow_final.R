@@ -213,6 +213,7 @@ out <- read.csv("site_level_parameters.csv")
 # for show, we can merge our tabular data into our spatial data
 s<-s_bbsRoutes; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
 # grab accompanying tabular data for fitting coefficients for detection
+detection_covariates <- list()
 # calculate noise and cars present
 habitatWorkbench:::.fetchVehicleData()
 unzip("VehicleSummary.zip")
@@ -220,22 +221,25 @@ t <- read.csv("VehicleSummary.csv")
   t$RTENO <- paste(t$state,sprintf("%03d", t$Route),sep="")
     t <- t[t$RTENO %in% out$route,]
       t <- t[,c("RTENO","Year","StopTotal","NoiseTotal")]
-  # transpose by year
-  t_data_full <- matrix()
-  for(y in 1999:2014){
-    # create a matrix with NAs for all routes
-    t_data <- matrix(rep(NA,2*length(out$route)),ncol=2)
-      rownames(t_data) <- out$route
-    # parse the noise and car presences for THIS year
-    t_focal <- as.matrix(t[t$Year == y,c(3,4)])
-      colnames(t_focal) <- paste(names(t)[3:4],y,sep=".")
-      rownames(t_focal) <- t[t$Year == y,]$RTENO
-    # assign data to those routes that actually have observations this year
-    t_data[which(rownames(t_data) %in% rownames(t_focal)),] <- t_focal[which(rownames(t_focal) %in% rownames(t_data)),]
-      colnames(t_data) <- paste(names(t)[3:4],y,sep=".")
-    if(ncol(t_data_full)>=2){
-      t_data_full <- cbind(t_data_full,t_data)
-    } else {
-      t_data_full <- t_data
-    }
+# transpose by year
+t_data_full <- matrix()
+for(y in 1999:2014){
+  # create a matrix with NAs for all routes
+  t_data <- matrix(rep(NA,2*length(out$route)),ncol=2)
+    rownames(t_data) <- out$route
+  # parse the noise and car presences for THIS year
+  t_focal <- as.matrix(t[t$Year == y,c(3,4)])
+    colnames(t_focal) <- paste(names(t)[3:4],y,sep=".")
+    rownames(t_focal) <- t[t$Year == y,]$RTENO
+  # assign data to those routes that actually have observations this year
+  t_data[which(rownames(t_data) %in% rownames(t_focal)),] <- t_focal[which(rownames(t_focal) %in% rownames(t_data)),]
+    colnames(t_data) <- paste(names(t)[3:4],y,sep=".")
+  if(ncol(t_data_full)>=2){
+    t_data_full <- cbind(t_data_full,t_data)
+  } else {
+    t_data_full <- t_data
   }
+}
+# assign to a named list that 'unmarked' will understand
+detection_covariates[[1]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Noise")]) # Noise Observed at Routes
+detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Stop")])  # Number of Cars Observed at Routes
