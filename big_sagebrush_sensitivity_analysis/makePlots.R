@@ -297,39 +297,41 @@ grid_arrange_shared_legend <- function(...) {
         heights = unit.c(unit(1, "npc") - lheight, lheight))
 }
 
-make_subplot <- function(df=NULL,label=NULL,y="elevation",xlab="Source of Uncertainty",ylab="Elevation (m)"){
-  p <- ggplot(df, aes(factor(uncertainty), elevation)) +
-               geom_boxplot(aes(x=presence, y=y, color="Presence")) +
-               geom_boxplot(aes(x=absence, y=y, color="Absence")) +
-               geom_boxplot(aes(x=climate, y=y, color="Climate")) +
-               geom_boxplot(aes(x=control, y=y, color="Control")) +
-               #geom_vline(xintercept=mean(sample(lat_elev_current_glm_90@data[,1],500),na.rm=T), colour="grey", linetype = "longdash") +
+make_subplot <- function(df=NULL,label=NULL,sub="elevation",xlab="Source of Uncertainty",ylab="Elevation (m)"){
+  if(sub=="elevation"){
+    ymax <- 3950;
+  } else if(sub=="latitude"){
+    ymax <- 50
+  }
+  p <- ggplot(df, aes(factor(uncertainty), get(sub))) + geom_boxplot(outlier.shape=NA) +
                xlab(xlab) + ylab(ylab) +
-               ylim(0,0.0015) +
-               annotate("text", x = 0.1, y = 0.0014, label = label) +
-               theme_bw() + theme(legend.title=element_blank())
+               annotate("text", x = 1.25, y = ymax, label = label, size=3.85) +
+               theme_bw() + theme(legend.title=element_blank());
+  if(sub=="elevation") { p <- p + ylim(0,4000) }
+  if(sub=="latitude") { p <- p + ylim(35,50)}
   return(p)
 }
 
+sub <- "elevation"
 # GLM P50 Interval (Elevation)
 df <- data.frame(presence=sample(lat_elev_presence_bias_50_glm@data[,1],500),
                  absence=sample(lat_elev_absence_bias_50_glm@data[,1],500),
                  climate=sample(lat_elev_climate_bias_50_glm@data[,1],500),
-                 control=sample(lat_elev_current_glm_50@data[,1],500),na.rm=T)
+                 control=sample(lat_elev_current_glm_50@data[,1],500))
 
 df <- melt(df,variable.name="uncertainty",value.name="elevation")
 
-p1 <- make_subplot(df,y="elevation",label="A")
+p1 <- make_subplot(df,y="elevation",label="p=0.50 (elevation) [GLM]")
 
 # GLM P90 Interval (Elevation)
-df <- data.frame(presence=sample(lat_elev_presence_bias_90_glm@data[,1],500,replace=T),
-                 absence=sample(lat_elev_absence_bias_90_glm@data[,1],500,replace=T),
-                 climate=sample(lat_elev_climate_bias_90_glm@data[,1],500,replace=T),
-                 control=sample(lat_elev_current_glm_90@data[,1],500),na.rm=T)
+df <- data.frame(presence=sample(lat_elev_presence_bias_90_glm@data[,1],500),
+                 absence=sample(lat_elev_absence_bias_90_glm@data[,1],500),
+                 climate=sample(lat_elev_climate_bias_90_glm@data[,1],500),
+                 control=sample(lat_elev_current_glm_90@data[,1],500))
 
 df <- melt(df,variable.name="uncertainty",value.name="elevation")
 
-p2 <- make_subplot(df,y="elevation",label="B")
+p2 <- make_subplot(df,y="elevation",label="p=0.90 (elevation) [GLM]")
 
 # RF P50 Interval (Elevation)
 df <- data.frame(presence=sample(lat_elev_presence_bias_50_rf@data[,1],500),
@@ -339,7 +341,7 @@ df <- data.frame(presence=sample(lat_elev_presence_bias_50_rf@data[,1],500),
 
 df <- melt(df,variable.name="uncertainty",value.name="elevation")
 
-p3 <- make_subplot(df,label="C")
+p3 <- make_subplot(df,label="p=0.50 (elevation) [RF]")
 
 # RF P90 Interval (Elevation)
 df <- data.frame(presence=sample(lat_elev_presence_bias_90_rf@data[,1],500),
@@ -349,9 +351,12 @@ df <- data.frame(presence=sample(lat_elev_presence_bias_90_rf@data[,1],500),
 
 df <- melt(df,variable.name="uncertainty",value.name="elevation")
 
-p4 <- make_subplot(df,y="elevation",label="D")
+p4 <- make_subplot(df,label="p=0.90 (elevation) [RF]")
 
-grid_arrange_shared_legend(p1, p2, p3, p4)
+grid.arrange(p1,p2,p3,p4)
+
+require(raster)
+require(rgdal)
 
 # GLM P50 Interval (Latitude)
 
@@ -360,9 +365,10 @@ df <- data.frame(presence=sample(spTransform(lat_elev_presence_bias_50_glm,CRS(p
                  climate=sample(spTransform(lat_elev_climate_bias_50_glm,CRS(projection("+init=epsg:4326")))@coords[,2],500),
                  control=sample(spTransform(lat_elev_current_glm_50,CRS(projection("+init=epsg:4326")))@coords[,2],500))
 
-df <- melt(df,variable.name="uncertainty",value.name="elevation")
+df <- melt(df,variable.name="uncertainty",value.name="latitude")
 
-p1 <- make_subplot(df,y="latitude", label="A")
+sub <- "latitude" # why is this happening?
+p1 <- make_subplot(df,sub='latitude',label="p=0.50 (latitude) [GLM]",ylab="Latitude (degrees)")
 
 # GLM P90 Interval (Latitude)
 df <- data.frame(presence=sample(spTransform(lat_elev_presence_bias_90_glm,CRS(projection("+init=epsg:4326")))@coords[,2],500,replace=T),
@@ -370,15 +376,8 @@ df <- data.frame(presence=sample(spTransform(lat_elev_presence_bias_90_glm,CRS(p
                  climate=sample(spTransform(lat_elev_climate_bias_90_glm,CRS(projection("+init=epsg:4326")))@coords[,2],500,replace=T),
                  control=sample(spTransform(lat_elev_current_glm_90,CRS(projection("+init=epsg:4326")))@coords[,2],500))
 
-p2 <- ggplot(df) + stat_bin(aes(x=presence, y=..density.., color="Presence Bias"), geom="step") +
-             stat_bin(aes(x=absence, y=..density.., color="Absence Bias"), geom="step") +
-             stat_bin(aes(x=climate, y=..density..,color="Climate Bias"), geom="step") +
-             stat_bin(aes(x=control, y=..density..,color="Control"), geom="step") +
-             geom_vline(xintercept=mean(sample(spTransform(lat_elev_current_glm_90,CRS(projection("+init=epsg:4326")))@coords[,2],500)), colour="grey", linetype = "longdash") +
-             xlab("Latitude (degrees)") + ylab("Density") +
-             ylim(c(0,0.3)) +
-             annotate("text", x = 34, y = 0.3, label = "B") +
-             theme_bw() + theme(legend.title=element_blank())
+df <- melt(df,variable.name="uncertainty",value.name="latitude")
+p2 <- make_subplot(df,sub='latitude',label="p=0.90 (latitude) [GLM]",ylab="Latitude (degrees)")
 
 # RF P50 Interval (Latitude)
 
@@ -387,15 +386,8 @@ df <- data.frame(presence=sample(spTransform(lat_elev_presence_bias_50_rf,CRS(pr
                  climate=sample(spTransform(lat_elev_climate_bias_50_rf,CRS(projection("+init=epsg:4326")))@coords[,2],500,replace=T),
                  control=sample(spTransform(lat_elev_current_rf_50,CRS(projection("+init=epsg:4326")))@coords[,2],500))
 
-p3 <- ggplot(df) + stat_bin(aes(x=presence, y=..density.., color="Presence Bias"), geom="step") +
-             stat_bin(aes(x=absence, y=..density.., color="Absence Bias"), geom="step") +
-             stat_bin(aes(x=climate, y=..density..,color="Climate Bias"), geom="step") +
-             stat_bin(aes(x=control, y=..density..,color="Control"), geom="step") +
-             geom_vline(xintercept=mean(sample(spTransform(lat_elev_current_glm_90,CRS(projection("+init=epsg:4326")))@coords[,2],500)), colour="grey", linetype = "longdash") +
-             xlab("Latitude (degrees)") + ylab("Density") +
-             ylim(c(0,0.3)) +
-             annotate("text", x = 34, y = 0.3, label = "C") +
-             theme_bw() + theme(legend.title=element_blank())
+df <- melt(df,variable.name="uncertainty",value.name="latitude")
+p3 <- make_subplot(df,sub='latitude',label="p=0.50 (latitude) [RF]",ylab="Latitude (degrees)")
 
 # RF P90 Interval (Latitude)
 
@@ -404,17 +396,10 @@ df <- data.frame(presence=sample(spTransform(lat_elev_presence_bias_90_rf,CRS(pr
                  climate=sample(spTransform(lat_elev_climate_bias_90_rf,CRS(projection("+init=epsg:4326")))@coords[,2],500,replace=T),
                  control=sample(spTransform(lat_elev_current_rf_90,CRS(projection("+init=epsg:4326")))@coords[,2],500))
 
-p4 <- ggplot(df) + stat_bin(aes(x=presence, y=..density.., color="Presence Bias"), geom="step") +
-             stat_bin(aes(x=absence, y=..density.., color="Absence Bias"), geom="step") +
-             stat_bin(aes(x=climate, y=..density..,color="Climate Bias"), geom="step") +
-             stat_bin(aes(x=control, y=..density..,color="Control"), geom="step") +
-             geom_vline(xintercept=mean(sample(spTransform(lat_elev_current_glm_90,CRS(projection("+init=epsg:4326")))@coords[,2],500)), colour="grey", linetype = "longdash") +
-             xlab("Latitude (degrees)") + ylab("Density") +
-             ylim(c(0,0.3)) +
-             annotate("text", x = 34, y = 0.3, label = "D") +
-             theme_bw() + theme(legend.title=element_blank())
+df <- melt(df,variable.name="uncertainty",value.name="latitude")
+p4 <- make_subplot(df,sub='latitude',label="p=0.90 (latitude) [RF]",ylab="Latitude (degrees)")
 
-grid_arrange_shared_legend(p1, p2, p3, p4)
+grid.arrange(p1, p2, p3, p4)
 
 
 # "ensemble"
