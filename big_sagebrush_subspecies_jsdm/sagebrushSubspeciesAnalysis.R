@@ -412,7 +412,8 @@ plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",bord
 box(); grid(lty=1,col="#00000030")
 legend("topright", c("wyomingensis","tridentata","vaseyana"), cex=0.8, fill=c("#003300","#197519","#80B280"),bg = "white");
 
-# response plots for GLMs
+vars <- names(wyomingensis_glm_unif[[1]][[1]]$data)[grepl(names(wyomingensis_glm_unif[[1]][[1]]$data),pattern="bio")]
+# response plots for wyomingensis
 png(paste(sep="/",HOME,"/Desktop/wyo_response_plots_glm.png"),height=1200,width=800)
   par(mfrow=c(5,1),cex.lab=2.8,cex.axis=2.8)
     for(v in vars){

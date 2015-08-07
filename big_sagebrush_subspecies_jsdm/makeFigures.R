@@ -1,5 +1,9 @@
 require(rgdal)
 require(rgeos)
+require(ggplot2)
+require(reshape2)
+require(gridExtra)
+require(grid)
 require(raster)
 
 HOME <- Sys.getenv("HOME")
@@ -247,10 +251,8 @@ text(x=-1500000,y=1300000,"2070 (RCP 8.5)",cex=0.85)
 graphics.off()
 
 # Figure 7 -- step plots for latitude / elevation under current climate conditions
-require(gglot2)
-require(reshape2)
-require(gridExtra)
-require(grid)
+
+png(filename="Fig_7.png",width=941.473632,height=517.05264)
 
 grid_arrange_shared_legend <- function(...) {
     plots <- list(...)
@@ -282,10 +284,10 @@ df <- data.frame(agreement=sample(p_current_elev_agreement,5000,replace=T),
                  wyomingensis=sample(p_current_elev_wyo,5000))
 df <- melt(df,variable.name="subspecies",value.name="elevation")
 p1 <- ggplot(df, aes(factor(subspecies), elevation)) +
-             geom_boxplot(aes(x=agreement, y=elevation, color="Agreement")) +
-             geom_boxplot(aes(x=tridentata, y=elevation, color="Tridentata")) +
-             geom_boxplot(aes(x=vaseyana, y=elevation,color="Vaseyana")) +
-             geom_boxplot(aes(x=wyomingensis, y=elevation,color="Wyomingensis")) +
+             geom_boxplot(aes(x='agreement', y=elevation, color="Agreement")) +
+             geom_boxplot(aes(x='tridentata', y=elevation, color="Tridentata")) +
+             geom_boxplot(aes(x='vaseyana', y=elevation,color="Vaseyana")) +
+             geom_boxplot(aes(x='wyomingensis', y=elevation,color="Wyomingensis")) +
              #geom_vline(xintercept=mean(sample(lat_elev_current_glm_90@coords[,2],500)), colour="grey", linetype = "longdash") +
              xlab("Subspecies") + ylab("Elevation") +
              theme_bw() + theme(legend.title=element_blank())
@@ -302,19 +304,20 @@ df <- data.frame(agreement=sample(p_current_lat_agreement,5000,replace=T),
 
 df <- melt(df,variable.name="subspecies",value.name="latitude")
 
-p2 <-<- ggplot(df, aes(factor(subspecies), latitude)) +
-            geom_boxplot(aes(x=agreement, y=latitude, color="Agreement")) +
-            geom_boxplot(aes(x=tridentata, y=latitude, color="Tridentata")) +
-            geom_boxplot(aes(x=vaseyana, y=latitude,color="Vaseyana")) +
-            geom_boxplot(aes(x=wyomingensis, y=latitude,color="Wyomingensis")) +
+p2 <- ggplot(df, aes(factor(subspecies), latitude)) +
+            geom_boxplot(aes(x='agreement', y=latitude, color="Agreement")) +
+            geom_boxplot(aes(x='tridentata', y=latitude, color="Tridentata")) +
+            geom_boxplot(aes(x='vaseyana', y=latitude,color="Vaseyana")) +
+            geom_boxplot(aes(x='wyomingensis', y=latitude,color="Wyomingensis")) +
             #geom_vline(xintercept=mean(sample(lat_elev_current_glm_90@coords[,2],500)), colour="grey", linetype = "longdash") +
             xlab("Subspecies") + ylab("Latitude") +
             theme_bw() + theme(legend.title=element_blank())
 
 grid_arrange_shared_legend(p1, p2)
+graphics.off()
 
 ## Prepare current climate conditions for boxplots
-require(raster)
+
 current_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/worldclim/current",pattern="bil$",full.names=T)
   current_climate <- raster::stack(current_climate[grepl(current_climate,pattern="bio_1[.]|bio_11[.]|bio_12[.]|bio_15[.]|bio_18[.]")])
 
@@ -328,7 +331,7 @@ rcp_85_2050_climate <- list.files("/media/ktaylora/big_black/intermediates/weath
 rcp_45_2070_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="bil$",full.names=T)
 rcp_85_2070_climate <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="bil$",full.names=T)
 
-## Figure 7 -- difference plots for each subspecies
+## Figure 8 -- difference plots for each subspecies
 t_crs <- CRS(projection("+init=epsg:2163"))
 
 # ssp. tridentata 2050 (4.5)
@@ -336,7 +339,7 @@ t_crs <- CRS(projection("+init=epsg:2163"))
 gain <- rgeos::gDifference(ens_tridentata_2050_rcp_45,ens_tridentata_current)
 loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2050_rcp_45)
 
-dev.new(width=13.265502,height=4.890797)
+png(file="Desktop/2050_45_difference_plots.png",width=1273.488192,height=469.516512)
 par(mfrow=c(1,3))
 
 plot(main=NA,spTransform(boundaries,t_crs),col="white",
@@ -349,15 +352,15 @@ box(); grid(lty=1,col="#00000030")
 text("A",cex=1.4,y=1300000,x=-1700000)
 
 # extract for boxplots
-
-focalVars <- c("01[.]tif|11[.]tif|12[.]tif|15[.]tif|18[.]tif")
-zips_path <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="zip$",full.names=T)
-rcp_45_2050_climate_ac <- zips_path[grepl(zips_path,pattern="/ac*.*45bi50*")]
-  names <- unzip(rcp_45_2050_climate_ac,list=T)$Name;
-    names <- names[grepl(names,pattern=focalVars)];
-  unlink("/tmp/focal_zip",force=T,recursive=T);
-  unzip(rcp_45_2050_climate_ac,files=names,overwrite=T,exdir="/tmp/focal_zip")
-    rcp_45_2050_climate_ac <- raster::stack(list.files("/tmp/focal_zip",pattern="tif$",full.names=T));
+#
+# focalVars <- c("01[.]tif|11[.]tif|12[.]tif|15[.]tif|18[.]tif")
+# zips_path <- list.files("/media/ktaylora/big_black/intermediates/weather/sagebrush_subspp_future_conditions/focal_for_ssp_manuscript",pattern="zip$",full.names=T)
+# rcp_45_2050_climate_ac <- zips_path[grepl(zips_path,pattern="/ac*.*45bi50*")]
+#   names <- unzip(rcp_45_2050_climate_ac,list=T)$Name;
+#     names <- names[grepl(names,pattern=focalVars)];
+#   unlink("/tmp/focal_zip",force=T,recursive=T);
+#   unzip(rcp_45_2050_climate_ac,files=names,overwrite=T,exdir="/tmp/focal_zip")
+#     rcp_45_2050_climate_ac <- raster::stack(list.files("/tmp/focal_zip",pattern="tif$",full.names=T));
 
 
 # species GAP records
@@ -398,12 +401,14 @@ plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("C",cex=1.4,y=1300000,x=-1700000)
 
+graphics.off()
+
 # ssp. tridentata 2050 (8.5)
 
 gain <- rgeos::gDifference(ens_tridentata_2050_rcp_85,ens_tridentata_current)
 loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2050_rcp_85)
 
-dev.new(width=13.265502,height=4.890797)
+png(file="Desktop/2050_85_difference_plots.png",width=1273.488192,height=469.516512)
 par(mfrow=c(1,3))
 
 plot(main=NA,spTransform(boundaries,t_crs),col="white",
@@ -446,12 +451,14 @@ plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("F",cex=1.4,y=1300000,x=-1700000)
 
+graphics.off()
+
 # ssp. tridentata 2070 (4.5)
 
 gain <- rgeos::gDifference(ens_tridentata_2070_rcp_45,ens_tridentata_current)
 loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2070_rcp_45)
 
-dev.new(width=13.265502,height=4.890797)
+png(file="Desktop/2070_45_difference_plots.png",width=1273.488192,height=469.516512)
 par(mfrow=c(1,3))
 
 plot(main=NA,spTransform(boundaries,t_crs),col="white",
@@ -494,12 +501,14 @@ plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("I",cex=1.4,y=1300000,x=-1700000)
 
+graphics.off()
+
 # ssp. tridentata 2070 (8.5)
 
 gain <- rgeos::gDifference(ens_tridentata_2070_rcp_85,ens_tridentata_current)
 loss <- rgeos::gDifference(ens_tridentata_current,ens_tridentata_2070_rcp_85)
 
-dev.new(width=13.265502,height=4.890797)
+png(file="Desktop/2070_85_difference_plots.png",width=1273.488192,height=469.516512)
 par(mfrow=c(1,3))
 
 plot(main=NA,spTransform(boundaries,t_crs),col="white",
@@ -541,3 +550,82 @@ plot(vas_gap,pch=15,cex=0.65,add=T)
 plot(spTransform(boundaries,t_crs), border=rgb(0, 0, 0, 0.5),add=T);
 box(); grid(lty=1,col="#00000030");legend("topright", c("maintain","gain","loss"), cex=0.8, fill=c("#006600","#0000FF","#CC0000"),bg = "white");
 text("L",cex=1.4,y=1300000,x=-1700000)
+
+graphics.off()
+
+# Figure 8 -- Response plots with histogram overlay
+
+responsePlot <- function(x,var=NULL,plot=T){
+  m <- x[[1]][[1]]
+  if(is.null(var)) stop("var= argument undefined");
+  if(sum(names(m$data) %in% var)==0) stop("var= not found in model object")
+  # define names
+  names <- names(m$data);
+    names <- names[names != "resp"]
+
+  d        <- x[[1]][[1]]$data
+  focal    <- d[,var]
+  notFocal <- d[,names[names!=var]]
+
+  x <- apply(notFocal,2,FUN=median, na.rm=T)
+    x <- data.frame(matrix(x,nrow=1))
+      names(x) <- names[names!=var]
+
+  spread <- sort(runif(min=min(focal,na.rm=T),max=max(focal,na.rm=T),n=nrow(notFocal)))
+    x <- cbind(spread,x)
+      names(x) <- c(var,names[names!=var])
+
+  prob <- as.vector(predict(m,x,type="resp"))
+    prob[prob < 0] <- 0; prob[prob>1] <- 1
+      prob <- data.frame(cbind(prob,x[,var]))
+        names(prob) <- c("prob",var)
+  if(plot){
+    plot(prob~get(var),type="l",data=prob, ylim=c(0,1),xlab=var,ylab="p(occ)", col="white",cex=1.8)
+      grid(lwd=1.4); lines(prob~get(var),lwd=2.5,col="red",data=prob)
+  }
+}
+
+respPlotDensityOverlay <- function(m_glm=NULL,m_rf=NULL,name="wyo"){
+  vars <<- sort(names(m_glm[[1]][[1]]$data)[grepl(names(m_glm[[1]][[1]]$data),pattern="bio")]) # this has to be global because of some weird bug in random forest
+  # response plots for wyomingensis
+  png(paste(sep="",HOME,"/Desktop/",name,"_response_plots_glm.png"),height=1250,width=850)
+    par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+      for(i in 1:length(vars)){
+        responsePlot(m_glm,var=vars[i])
+        out <- partialPlot(m_rf[[1]],x.var=vars[i],pred.data=na.omit(m_glm[[1]][[1]]$data),which.class=1,plot=F)
+        out$y <- exp(out$y);
+        out$y <- (out$y/max(out$y))
+        lines(y=out$y, x=out$x,lwd=2.5,col="blue",main="",xlab=as.character(vars[i]))
+        h1 <- density(na.omit(m_glm[[1]][[1]]$data[m_glm[[1]][[1]]$data$resp==1,vars[i]]))
+          h1$y <- h1$y/max(h1$y)
+        lines(h1,col="#99996699",lwd=2.5,lty=15)
+        h2 <- density(na.omit(m_glm[[1]][[1]]$data[m_glm[[1]][[1]]$data$resp==0,vars[i]]))
+          h2$y <- h2$y/max(h2$y)
+        lines(h2,col="#CCCC0099",lwd=2.5,lty=15)
+      };
+  graphics.off();
+}
+
+load("/media/ktaylora/big_black/products/uw/big_sagebrush_subspp_analysis/models.Rdata")
+
+# response plots for wyomingensis
+respPlotDensityOverlay(m_glm=wyomingensis_glm_unif,m_rf=wyomingensis_rf_unif,name="wyo")
+respPlotDensityOverlay(m_glm=tridentata_glm_unif,m_rf=tridentata_rf_unif,name="tri")
+respPlotDensityOverlay(m_glm=vaseyana_glm_unif,m_rf=vaseyana_rf_unif,name="vas")
+
+# png(paste(sep="/",HOME,"/Desktop/wyo_response_plots_glm.png"),height=1250,width=850)
+#   par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+#     for(v in vars){
+#       responsePlot(wyomingensis_glm_unif,var=v)
+#       out <- partialPlot(wyomingensis_rf_unif[[1]],x.var=as.character(v),pred.data=na.omit(wyomingensis_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
+#       out$y <- exp(out$y);
+#       out$y <- (out$y/max(out$y))
+#       lines(y=out$y, x=out$x,lwd=2.5,col="blue",main="",xlab=as.character(v))
+#       h1 <- density(na.omit(wyomingensis_glm_unif[[1]][[1]]$data[wyomingensis_glm_unif[[1]][[1]]$data$resp==1,v]))
+#         h1$y <- h1$y/max(h1$y)
+#       lines(h1,col="#99996699",lwd=2.5,lty=15)
+#       h2 <- density(na.omit(wyomingensis_glm_unif[[1]][[1]]$data[wyomingensis_glm_unif[[1]][[1]]$data$resp==0,v]))
+#         h2$y <- h2$y/max(h2$y)
+#       lines(h2,col="#CCCC0099",lwd=2.5,lty=15)
+#     };
+# graphics.off();
