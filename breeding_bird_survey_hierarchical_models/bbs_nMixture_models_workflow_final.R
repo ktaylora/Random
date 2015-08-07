@@ -14,8 +14,10 @@ processFocalRoute <- function(route=NULL){
   require(habitatWorkbench)
   require(rgdal)
   require(raster)
-  landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
-  t_routes_bcr1819 <- read.csv("/home/ktaylora/PLJV/species_data/bbs_data/bbs_routes_bcr1819.csv")
+
+  names(route@data) <- tolower(names(route@data)) #
+
+  landcover <- raster(paste(sep="",HOME,"PLJV/landcover/orig/Final_LC_8bit.tif"))
   points  <- habitatWorkbench::sampleAroundVertices(s=route,maxDist=2200,n=250) # generate a number of sampling points around each route to derive our site-level landscape metrics
   buffers <- landscapeAnalysis::subsampleSurface(x=landcover,pts=points, width=750) # sample buffers from our source landcover dataset with the points derived from the current route
   # parse our buffers out into focal landcover types
@@ -63,7 +65,7 @@ processFocalRoute <- function(route=NULL){
           shrubland_total_area <- mean(shrubland_total_area)
     }
   # write to output table
-  return(data.frame(route=route$RTENO,grass_total_area=grassland_total_area,grass_mean_patch_area=grassland_mean_patch_area,
+  return(data.frame(route=route$rteno,grass_total_area=grassland_total_area,grass_mean_patch_area=grassland_mean_patch_area,
     ag_total_area=agriculture_total_area,shrub_total_area=shrubland_total_area))
 }
 
@@ -77,16 +79,19 @@ require(habitatWorkbench)
 require(parallel); cl <- makeCluster(getOption("cl.cores", 7),outfile='outfile.log')
 
 # read-in our local (study area) routes
-t_routes_bcr1819 <<- read.csv("/home/ktaylora/PLJV/species_data/bbs_data/bbs_routes_bcr1819.csv") # pre-define the route numbers needed in an external GIS
+# t_routes_bcr1819 <<- read.csv(paste(sep="",HOME,"PLJV/species_data/bbs_data/bbs_routes_bcr1819.csv")) # pre-define the route numbers needed in an external GIS
 
+# THE PUBLISHED ROUTE NUMBERS WITH THE 1999 BBS SHAPEFILE IS OUT OF DATE -- DO NOT USE IT
 # read-in the national bbs routes data and parse accordingly
 # data(bbsRoutes); s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_routes_bcr1819$RTENO,] # RTENO : [STATE(2-digit)][ROUTE(3-digit)]
 
 # ensure we have adequate land cover data for our bbs routes
-landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
-  landcover <- extract(landcover,as(spTransform(s_bbsRoutes,CRS(projection(landcover))),'SpatialPointsDataFrame'),sp=T)
-s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% unique(landcover[!is.na(landcover$Final_LC_8bit),]$RTENO),] # make sure that our route data has landcover data available
-  s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% unique(landcover[landcover$Final_LC_8bit != 0,]$RTENO),]
+landcover <- raster(paste(sep="",HOME,"PLJV/landcover/orig/Final_LC_8bit.tif"))
+  s_bbsRoutes <- spTransform(readOGR(paste(sep="",HOME,"PLJV/species_data/bbs_data/"),"Breeding_Bird_Surveys_1998to2013",verbose=F),CRS(projection(landcover)))
+    landcover <- extract(landcover,as(spTransform(s_bbsRoutes,CRS(projection(landcover))),'SpatialPointsDataFrame'),sp=T)
+
+ s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$rteno %in% unique(landcover[!is.na(landcover$Final_LC_8bit),]$rteno),] # make sure that our route data has landcover data available
+   s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$rteno %in% unique(landcover[landcover$Final_LC_8bit != 0,]$rteno),]
 
 # split our routes so that they can be processed in parallel on a multi-core machine and then calculate some site level statistics for landcover at each route
 s_bbsRoutes <- split(s_bbsRoutes,f=1:nrow(s_bbsRoutes))
@@ -101,10 +106,10 @@ if(!file.exists("site_level_parameters.csv")){
 
 ## CALCULATE OUR ISOLATION METRICS AT 1650 AND 30000 METER BUFFER DISTANCES
 
-if(!grepl(names(out),pattern="isolation_3.3")){
-      landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
+if(!grepl(names(out),pattern="isolation_1650m")){
+      landcover <- raster(paste(sep="",HOME,"PLJV/landcover/orig/Final_LC_8bit.tif"))
     s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
-      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteCoords,centroid=T) # calculate the centroid of each route
+      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteCoords,centroid=T)     # calculate the centroid of each route
   buffers_3.3km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=3300/2)      # calculate our 3.3 km regions
     m <- mcmapply(buffers_3.3km, FUN=raster::crop, MoreArgs=list(x=landcover))
       buffers_3.3km <- mcmapply(FUN=raster::mask, x=m, mask=buffers_3.3km); rm(m);
@@ -128,8 +133,8 @@ if(!grepl(names(out),pattern="isolation_3.3")){
                     out$isolation_3.3km<-as.vector(unlist(buffers_3.3km))
 }
 
-if(!grepl(names(out),pattern="isolation_30km")){
-      landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
+if(!grepl(names(out),pattern="isolation_30000m")){
+      landcover <- raster(paste(sep="",HOME,"PLJV/landcover/orig/Final_LC_8bit.tif"))
     s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
       centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteCoords,centroid=T) # calculate the centroid of each route
   buffers_30km <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=30000)      # calculate our 3.3 km regions
@@ -156,65 +161,65 @@ if(!grepl(names(out),pattern="isolation_30km")){
 write.csv(out,"site_level_parameters.csv",row.names=F)
 
 # FETCH BBS COUNT DATA AND ASSOCIATE IT WITH THE FOCAL ROUTES
-
-habitatWorkbench:::.fetchBbsStopData();
-t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F.*.zip")); # ROUTES here are designated by their 3-digit code only. See the accompanying statenum column
-  t_counts <- t_counts[t_counts$year %in% 1999:2014,]
-
-route_code <- as.numeric(substring(s_bbsRoutes$RTENO, nchar(s_bbsRoutes$RTENO)-2,nchar(s_bbsRoutes$RTENO))) # 3-digit route code
-state_code <- as.numeric(substring(s_bbsRoutes$RTENO, 1,nchar(s_bbsRoutes$RTENO)-3)) # 2-digit state code
-
-t_counts <- t_counts[t_counts$statenum %in% state_code & t_counts$Route %in% route_code,] # parse our route counts to routes within the focal region
-  t_counts$RTENO <- paste(sprintf("%02d",t_counts$statenum),sprintf("%03d",t_counts$Route),sep="")
-
-s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,] # parse out the 'in region' routes we have count data for
-   t_counts <- t_counts[t_counts$RTENO %in% s_bbsRoutes$RTENO,]    # reciprocate
-
-# find the routes that have non-zero counts for our focal species, keeping the zero routes.
-n <- names(t_counts)
-nonZero <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))),]
-   zero <- t_counts[!(t_counts$RTENO %in% nonZero$RTENO),]
-     zero[,n[grepl(n,pattern="Stop")]] <- 0
-       zero <- zero[!duplicated(zero$RTENO),] # remove duplicate zero values for routes
-         zero$AOU <- as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))
-
-   t_counts <- rbind(nonZero,zero);rm(list=c('nonZero','zero'))
-     t_counts <- t_counts[!duplicated(t_counts),] # let's really make sure we don't have duplicate entries in the table, eh?
-s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,]
-
-# transpose counts by year
-output <- data.frame()
-routes <- unique(t_counts$RTENO)
-for(y in sort(unique(t_counts$year))){
-  # parse stops for the focal year
-  cnts_focal <- data.frame(RTENO=routes,NA)
-      counts <- as.numeric(rowSums(t_counts[t_counts$year == y,n[grepl(n,pattern="Stop")]],na.rm=F))
-        counts <- counts[!duplicated(t_counts[t_counts$year == y,"RTENO"])] # make sure we don't have a looming duplicate route
-  stop_routes <- t_counts[t_counts$year == y,"RTENO"]
-      cnts_focal[match(cnts_focal$RTENO,stop_routes,nomatch=F),2] <- counts
-        names(cnts_focal) <- c("RTENO",paste("cnt",y,sep="."))
-          cnts_focal <- cnts_focal[!duplicated(cnts_focal$RTENO),]
-  # merge columns
-  if(!nrow(output)){
-    output <- cnts_focal
-  } else {
-    output <- cbind(output,unique(cnts_focal))
-  }
-}; names <- names(output); output <- cbind(RTENO=routes,output[,names[grepl(names,pattern="cnt[.]")]])
-# BIND TO OUR LANDSCAPE METRICS TO MAKE A FULL TABLE OF SITE-LEVEL COVARIATES
-out <- read.csv("site_level_parameters.csv")
-  out <- out[!duplicated(out$route),]
-    out <- out[out$route %in% output$RTENO,]
-      out <- out[order(out$route),]
-      output <- output[output$RTENO %in% out$route,]
-        output <- output[order(output$RTENO),]
-          out <- cbind(out[match(out$route,output$RTENO),],output)
-            out<-out[,!duplicated(names(out))]
-              if(sum(out$route != out$RTENO) > 0){ cat("error -- failed to match routes between tables.")}
-                out <- out[,names(out) != "RTENO"]
-
-# for show, we can merge our tabular data into our spatial data
-s<-s_bbsRoutes[!duplicated(s_bbsRoutes@data$RTENO),]; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
+#
+# habitatWorkbench:::.fetchBbsStopData();
+# t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F.*.zip")); # ROUTES here are designated by their 3-digit code only. See the accompanying statenum column
+#   t_counts <- t_counts[t_counts$year %in% 1999:2014,]
+#
+# route_code <- as.numeric(substring(s_bbsRoutes$RTENO, nchar(s_bbsRoutes$RTENO)-2,nchar(s_bbsRoutes$RTENO))) # 3-digit route code
+# state_code <- as.numeric(substring(s_bbsRoutes$RTENO, 1,nchar(s_bbsRoutes$RTENO)-3)) # 2-digit state code
+#
+# t_counts <- t_counts[t_counts$statenum %in% state_code & t_counts$Route %in% route_code,] # parse our route counts to routes within the focal region
+#   t_counts$RTENO <- paste(sprintf("%02d",t_counts$statenum),sprintf("%03d",t_counts$Route),sep="")
+#
+# s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,] # parse out the 'in region' routes we have count data for
+#    t_counts <- t_counts[t_counts$RTENO %in% s_bbsRoutes$RTENO,]    # reciprocate
+#
+# # find the routes that have non-zero counts for our focal species, keeping the zero routes.
+# n <- names(t_counts)
+# nonZero <- t_counts[which(t_counts$AOU == as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))),]
+#    zero <- t_counts[!(t_counts$RTENO %in% nonZero$RTENO),]
+#      zero[,n[grepl(n,pattern="Stop")]] <- 0
+#        zero <- zero[!duplicated(zero$RTENO),] # remove duplicate zero values for routes
+#          zero$AOU <- as.numeric(habitatWorkbench:::.sppToAou("long-billed curlew"))
+#
+#    t_counts <- rbind(nonZero,zero);rm(list=c('nonZero','zero'))
+#      t_counts <- t_counts[!duplicated(t_counts),] # let's really make sure we don't have duplicate entries in the table, eh?
+# s_bbsRoutes <- s_bbsRoutes[s_bbsRoutes$RTENO %in% t_counts$RTENO,]
+#
+# # transpose counts by year
+# output <- data.frame()
+# routes <- unique(t_counts$RTENO)
+# for(y in sort(unique(t_counts$year))){
+#   # parse stops for the focal year
+#   cnts_focal <- data.frame(RTENO=routes,NA)
+#       counts <- as.numeric(rowSums(t_counts[t_counts$year == y,n[grepl(n,pattern="Stop")]],na.rm=F))
+#         counts <- counts[!duplicated(t_counts[t_counts$year == y,"RTENO"])] # make sure we don't have a looming duplicate route
+#   stop_routes <- t_counts[t_counts$year == y,"RTENO"]
+#       cnts_focal[match(cnts_focal$RTENO,stop_routes,nomatch=F),2] <- counts
+#         names(cnts_focal) <- c("RTENO",paste("cnt",y,sep="."))
+#           cnts_focal <- cnts_focal[!duplicated(cnts_focal$RTENO),]
+#   # merge columns
+#   if(!nrow(output)){
+#     output <- cnts_focal
+#   } else {
+#     output <- cbind(output,unique(cnts_focal))
+#   }
+# }; names <- names(output); output <- cbind(RTENO=routes,output[,names[grepl(names,pattern="cnt[.]")]])
+# # BIND TO OUR LANDSCAPE METRICS TO MAKE A FULL TABLE OF SITE-LEVEL COVARIATES
+# out <- read.csv("site_level_parameters.csv")
+#   out <- out[!duplicated(out$route),]
+#     out <- out[out$route %in% output$RTENO,]
+#       out <- out[order(out$route),]
+#       output <- output[output$RTENO %in% out$route,]
+#         output <- output[order(output$RTENO),]
+#           out <- cbind(out[match(out$route,output$RTENO),],output)
+#             out<-out[,!duplicated(names(out))]
+#               if(sum(out$route != out$RTENO) > 0){ cat("error -- failed to match routes between tables.")}
+#                 out <- out[,names(out) != "RTENO"]
+#
+# # for show, we can merge our tabular data into our spatial data
+# s<-s_bbsRoutes[!duplicated(s_bbsRoutes@data$RTENO),]; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
 # GRAB ACCOMPANYING TABULAR DATA FOR FITTING COEFFICIENTS FOR DETECTION
 detection_covariates <- list()
 # calculate noise and cars present
@@ -278,8 +283,8 @@ m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_to
 #                     pformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
 #                     data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
 
-# pseudo-rsquared
-model_sse <- sum(as.vector(m_lbcu@data@y-fitted(m_lbcu))^2, na.rm=T)
-  null=ceiling(median(as.numeric(unlist(na.omit(out[,grepl(names(out),pattern="cnt")]))))) # just take the median as a null count model
-    null_sse <- sum((out[,grepl(names(out),pattern="cnt")]-null)^2,na.rm=T)
-cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
+# % error variance explained by model vs null
+# model_sse <- sum(as.vector(m_lbcu@data@y-fitted(m_lbcu))^2, na.rm=T)
+#   null=ceiling(median(as.numeric(unlist(na.omit(out[,grepl(names(out),pattern="cnt")]))))) # just take the median as a null count model
+#     null_sse <- sum((out[,grepl(names(out),pattern="cnt")]-null)^2,na.rm=T)
+# cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
