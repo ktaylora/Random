@@ -69,7 +69,7 @@ plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",bord
   plot(spTransform(unique_p50_current_vaseyana,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
   plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
 text("topleft", "A")
 
 plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.8)
@@ -78,7 +78,7 @@ plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",bord
   plot(spTransform(unique_p50_current_tridentata,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
   plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
 text("topleft", "B")
 graphics.off()
 
@@ -116,7 +116,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
  plot(spTransform(unique_p50_2050_rcp_45_vaseyana,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2050 (RCP 4.5)",cex=0.85)
 plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
   plot(spTransform(intersect_p50_wyo_tri_2050_rcp_45,CRS(projection("+init=epsg:2163"))), col="#003D7A",border=NA,add=T)
@@ -124,7 +124,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
   plot(spTransform(unique_p50_2050_rcp_45_tridentata,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
   plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2050 (RCP 4.5)",cex=0.85)
 graphics.off()
 
@@ -159,7 +159,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
  plot(spTransform(unique_p50_2070_rcp_45_vaseyana,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2070 (RCP 4.5)",cex=0.85)
 plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
   plot(spTransform(intersect_p50_wyo_tri_2070_rcp_45,CRS(projection("+init=epsg:2163"))), col="#003D7A",border=NA,add=T)
@@ -167,7 +167,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
   plot(spTransform(unique_p50_2070_rcp_45_tridentata,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
   plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2070 (RCP 4.5)",cex=0.85)
 graphics.off()
 
@@ -202,7 +202,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
  plot(spTransform(unique_p50_2050_rcp_85_vaseyana,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2050 (RCP 8.5)",cex=0.85)
 plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
   plot(spTransform(intersect_p50_wyo_tri_2050_rcp_85,CRS(projection("+init=epsg:2163"))), col="#003D7A",border=NA,add=T)
@@ -210,7 +210,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
   plot(spTransform(unique_p50_2050_rcp_85_tridentata,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
   plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2050 (RCP 8.5)",cex=0.85)
 graphics.off()
 
@@ -245,7 +245,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
  plot(spTransform(unique_p50_2070_rcp_85_vaseyana,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
  plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","tridentata","wyomingensis","vaseyana"), cex=1.8, fill=c("#003D7A","#005CB8","#4D94DB","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2070 (RCP 8.5)",cex=0.85)
 plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="white",border=NA,xlim=c(-1449624,103145),ylim=c(-1258277,1363081), axes=T,cex=0.65)
   plot(spTransform(intersect_p50_wyo_tri_2070_rcp_85,CRS(projection("+init=epsg:2163"))), col="#003D7A",border=NA,add=T)
@@ -253,7 +253,7 @@ plot(main=NA,spTransform(boundaries,CRS(projection("+init=epsg:2163"))),col="whi
   plot(spTransform(unique_p50_2070_rcp_85_tridentata,CRS(projection("+init=epsg:2163"))), col="#B2D1F0",border=NA,add=T)
   plot(spTransform(boundaries,CRS(projection("+init=epsg:2163"))), border="#000000B3",add=T)
 box(); grid(lty=1,col="#00000030")
-legend("topright", c("consensus","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
+legend("topright", c("overlap","wyomingensis","tridentata"), cex=1.8, fill=c("#003D7A","#005CB8","#B2D1F0"),bg = "white");
 text(x=-1500000,y=1300000,"2070 (RCP 8.5)",cex=0.85)
 graphics.off()
 
@@ -559,7 +559,7 @@ graphics.off()
 
 # Figure 8 -- Response plots with histogram overlay
 
-responsePlot <- function(x,var=NULL,plot=T){
+responsePlot <- function(x,var=NULL,plot=T,xlab=NULL){
   m <- x[[1]][[1]]
   if(is.null(var)) stop("var= argument undefined");
   if(sum(names(m$data) %in% var)==0) stop("var= not found in model object")
@@ -584,7 +584,7 @@ responsePlot <- function(x,var=NULL,plot=T){
       prob <- data.frame(cbind(prob,x[,var]))
         names(prob) <- c("prob",var)
   if(plot){
-    plot(prob~get(var),type="l",data=prob, ylim=c(0,1),xlab=var,ylab="p(occ)", col="white",cex=1.8)
+    plot(prob~get(var),type="l",data=prob, ylim=c(0,1),xlab=ifelse(is.null(xlab),var,xlab),ylab="p(occ)", col="white",cex=2.2)
       grid(lwd=1.4); lines(prob~get(var),lwd=2.5,col="red",data=prob)
   }
 }
@@ -594,9 +594,9 @@ responsePlot <- function(x,var=NULL,plot=T){
 #   vars <<- sort(names(m_glm[[1]][[1]]$data)[grepl(names(m_glm[[1]][[1]]$data),pattern="bio")]) # this has to be global because of some weird bug in random forest
 #   # response plots for wyomingensis
 #   png(paste(sep="",HOME,"/Desktop/",name,"_response_plots_glm.png"),height=1250,width=850)
-#     par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+#     par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
 #       for(i in 1:length(vars)){
-#         responsePlot(m_glm,var=vars[i])
+#         responsePlot(m_glm,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
 #         out <- partialPlot(m_rf[[1]],x.var=vars[i],pred.data=na.omit(m_glm[[1]][[1]]$data),which.class=1,plot=F)
 #         out$y <- exp(out$y);
 #         out$y <- (out$y/max(out$y))
@@ -616,9 +616,12 @@ vars <- sort(names(wyomingensis_glm_unif[[1]][[1]]$data)[grepl(names(wyomingensi
 
 # response plots for wyomingensis -- current conditions
 png(paste(sep="",HOME,"/Desktop/wyo_response_plots_glm.png"),height=1250,width=850)
-  par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+  par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
+  nameToExpl <- data.frame(name=c("bio_3","bio_4","bio_11","bio_15","bio_18"),
+                           expl=c("Isothermality","Temperature Seasonality","Mean Temperature of Coldest Quarter","Precipitation Seasonality (Coefficient of Variation)",
+                                   "Precipitation of Warmest Quarter"))
     for(i in 1:length(vars)){
-      responsePlot(wyomingensis_glm_unif,var=vars[i])
+      responsePlot(wyomingensis_glm_unif,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
       out <- partialPlot(wyomingensis_rf_unif[[1]],x.var=vars[i],pred.data=na.omit(wyomingensis_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
       out$y <- exp(out$y);
       out$y <- (out$y/max(out$y))
@@ -634,9 +637,12 @@ graphics.off();
 
 # response plots for tridentata
 png(paste(sep="",HOME,"/Desktop/tri_response_plots_glm.png"),height=1250,width=850)
-  par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+  par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
+  nameToExpl <- data.frame(name=c("bio_3","bio_4","bio_11","bio_15","bio_18"),
+                           expl=c("Isothermality","Temperature Seasonality","Mean Temperature of Coldest Quarter","Precipitation Seasonality (Coefficient of Variation)",
+                                   "Precipitation of Warmest Quarter"))
     for(i in 1:length(vars)){
-      responsePlot(tridentata_glm_unif,var=vars[i])
+      responsePlot(tridentata_glm_unif,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
       out <- partialPlot(tridentata_rf_unif[[1]],x.var=vars[i],pred.data=na.omit(tridentata_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
       out$y <- exp(out$y);
       out$y <- (out$y/max(out$y))
@@ -652,9 +658,12 @@ graphics.off();
 
 # response plots for vaseyana
 png(paste(sep="",HOME,"/Desktop/vas_response_plots_glm.png"),height=1250,width=850)
-  par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+  par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
+  nameToExpl <- data.frame(name=c("bio_3","bio_4","bio_11","bio_15","bio_18"),
+                           expl=c("Isothermality","Temperature Seasonality","Mean Temperature of Coldest Quarter","Precipitation Seasonality (Coefficient of Variation)",
+                                   "Precipitation of Warmest Quarter"))
     for(i in 1:length(vars)){
-      responsePlot(vaseyana_glm_unif,var=vars[i])
+      responsePlot(vaseyana_glm_unif,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
       out <- partialPlot(vaseyana_rf_unif[[1]],x.var=vars[i],pred.data=na.omit(vaseyana_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
       out$y <- exp(out$y);
       out$y <- (out$y/max(out$y))
@@ -724,19 +733,121 @@ png(paste(sep="",HOME,"/Desktop/wyo_response_plots_2050_2070_45.png"),height=125
   names(rcp_45_2070_wyo) <- gsub(names(rcp_45_2070_wyo),pattern="0",replacement="")
   names(rcp_85_2050_wyo) <- gsub(names(rcp_85_2050_wyo),pattern="0",replacement="")
   names(rcp_85_2070_wyo) <- gsub(names(rcp_85_2070_wyo),pattern="0",replacement="")
-
-  par(mfrow=c(5,1),cex.lab=1.8,cex.axis=1.8)
+  par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
+  nameToExpl <- data.frame(name=c("bio_3","bio_4","bio_11","bio_15","bio_18"),
+                           expl=c("Isothermality","Temperature Seasonality","Mean Temperature of Coldest Quarter","Precipitation Seasonality (Coefficient of Variation)",
+                                   "Precipitation of Warmest Quarter"))
     for(i in 1:length(vars)){
-      responsePlot(wyomingensis_glm_unif,var=vars[i])
+      responsePlot(wyomingensis_glm_unif,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
       out <- partialPlot(wyomingensis_rf_unif[[1]],x.var=vars[i],pred.data=na.omit(wyomingensis_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
       out$y <- exp(out$y);
       out$y <- (out$y/max(out$y))
       lines(y=out$y, x=out$x,lwd=2.5,col="blue",main="",xlab=as.character(vars[i]))
       h1 <- density(unlist(rcp_45_2050_wyo[vars[i]]))
         h1$y <- h1$y/max(h1$y)
-      lines(h1,col="#99996699",lwd=2.5,lty=15)
+      lines(h1,col="#FFCC8099",lwd=2.5,lty=15)
       h2 <- density(unlist(rcp_45_2070_wyo[vars[i]]))
         h2$y <- h2$y/max(h2$y)
-      lines(h2,col="#CCCC0099",lwd=2.5,lty=15)
+      lines(h2,col="#FFAD3399",lwd=2.5,lty=15)
+      h3 <- density(unlist(rcp_85_2050_wyo[vars[i]]))
+        h3$y <- h3$y/max(h3$y)
+      lines(h3,col="#E68A0099",lwd=2.5,lty=15)
+      h4 <- density(unlist(rcp_85_2070_wyo[vars[i]]))
+        h4$y <- h4$y/max(h4$y)
+      lines(h4,col="#995C0099",lwd=2.5,lty=15)
     };
 graphics.off();
+
+# response plots for tridentata -- 2050, 2070 RCP 4.5 and 8.5
+png(paste(sep="",HOME,"/Desktop/tri_response_plots_2050_2070_45.png"),height=1250,width=850)
+  names(rcp_45_2050_tri) <- gsub(names(rcp_45_2050_tri),pattern="0",replacement="") # strip out the 0 from bio_0N.  The future raster surfaces don't have a leading zero
+  names(rcp_45_2070_tri) <- gsub(names(rcp_45_2070_tri),pattern="0",replacement="")
+  names(rcp_85_2050_tri) <- gsub(names(rcp_85_2050_tri),pattern="0",replacement="")
+  names(rcp_85_2070_tri) <- gsub(names(rcp_85_2070_tri),pattern="0",replacement="")
+  par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
+  nameToExpl <- data.frame(name=c("bio_3","bio_4","bio_11","bio_15","bio_18"),
+                           expl=c("Isothermality","Temperature Seasonality","Mean Temperature of Coldest Quarter","Precipitation Seasonality (Coefficient of Variation)",
+                                   "Precipitation of Warmest Quarter"))
+    for(i in 1:length(vars)){
+      responsePlot(tridentata_glm_unif,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
+      out <- partialPlot(tridentata_rf_unif[[1]],x.var=vars[i],pred.data=na.omit(tridentata_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
+      out$y <- exp(out$y);
+      out$y <- (out$y/max(out$y))
+      lines(y=out$y, x=out$x,lwd=2.5,col="blue",main="",xlab=as.character(vars[i]))
+      h1 <- density(unlist(rcp_45_2050_tri[vars[i]]))
+        h1$y <- h1$y/max(h1$y)
+      lines(h1,col="#FFCC8099",lwd=2.5,lty=15)
+      h2 <- density(unlist(rcp_45_2070_tri[vars[i]]))
+        h2$y <- h2$y/max(h2$y)
+      lines(h2,col="#FFAD3399",lwd=2.5,lty=15)
+      h3 <- density(unlist(rcp_85_2050_tri[vars[i]]))
+        h3$y <- h3$y/max(h3$y)
+      lines(h3,col="#E68A0099",lwd=2.5,lty=15)
+      h4 <- density(unlist(rcp_85_2070_tri[vars[i]]))
+        h4$y <- h4$y/max(h4$y)
+      lines(h4,col="#995C0099",lwd=2.5,lty=15)
+    };
+graphics.off();
+
+# response plots for vaseyana -- 2050, 2070 RCP 4.5 and 8.5
+png(paste(sep="",HOME,"/Desktop/vas_response_plots_2050_2070_45.png"),height=1250,width=850)
+  names(rcp_45_2050_vas) <- gsub(names(rcp_45_2050_vas),pattern="0",replacement="") # svasp out the 0 from bio_0N.  The future raster surfaces don't have a leading zero
+  names(rcp_45_2070_vas) <- gsub(names(rcp_45_2070_vas),pattern="0",replacement="")
+  names(rcp_85_2050_vas) <- gsub(names(rcp_85_2050_vas),pattern="0",replacement="")
+  names(rcp_85_2070_vas) <- gsub(names(rcp_85_2070_vas),pattern="0",replacement="")
+  par(mfrow=c(5,1),cex.lab=2.2,cex.axis=2.2)
+  nameToExpl <- data.frame(name=c("bio_3","bio_4","bio_11","bio_15","bio_18"),
+                           expl=c("Isothermality","Temperature Seasonality","Mean Temperature of Coldest Quarter","Precipitation Seasonality (Coefficient of Variation)",
+                                   "Precipitation of Warmest Quarter"))
+    for(i in 1:length(vars)){
+      responsePlot(vaseyana_glm_unif,var=vars[i],xlab=as.vector(nameToExpl[nameToExpl$name == vars[i],]$expl))
+      out <- partialPlot(vaseyana_rf_unif[[1]],x.var=vars[i],pred.data=na.omit(vaseyana_glm_unif[[1]][[1]]$data),which.class=1,plot=F)
+      out$y <- exp(out$y);
+      out$y <- (out$y/max(out$y))
+      lines(y=out$y, x=out$x,lwd=2.5,col="blue")
+      h1 <- density(unlist(rcp_45_2050_vas[vars[i]]))
+        h1$y <- h1$y/max(h1$y)
+      lines(h1,col="#FFCC8099",lwd=2.5,lty=15)
+      h2 <- density(unlist(rcp_45_2070_vas[vars[i]]))
+        h2$y <- h2$y/max(h2$y)
+      lines(h2,col="#FFAD3399",lwd=2.5,lty=15)
+      h3 <- density(unlist(rcp_85_2050_vas[vars[i]]))
+        h3$y <- h3$y/max(h3$y)
+      lines(h3,col="#E68A0099",lwd=2.5,lty=15)
+      h4 <- density(unlist(rcp_85_2070_vas[vars[i]]))
+        h4$y <- h4$y/max(h4$y)
+      lines(h4,col="#995C0099",lwd=2.5,lty=15)
+    };
+graphics.off();
+
+#Table 2
+
+total_area_2050_45 <- 1.766059e+12 # from a dissolve operation performed in a GIS
+total_area_2050_85 <- 1.753384e+12
+total_area_2070_45 <- 1.726445e+12
+total_area_2070_85 <- 1.691149e+12
+
+tbl_2 <- data.frame(spp=rep(c("tridentata","wyomingensis","vaseyana"),4),
+                    rangeSize=rep(c(NA,NA,NA),4),
+                    percOverlap=rep(c(NA,NA,NA),4),
+                    percChange=rep(c(NA,NA,NA),4),
+                    senario=c(rep("2050_RCP45",3),rep("2050_RCP85",3),rep("2070_RCP45",3),rep("2070_RCP85",3)))
+
+tbl_2$rangeSize <- c(rgeos::gArea(spTransform(ens_tridentata_2050_rcp_45,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_wyomingensis_2050_rcp_45,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_vaseyana_2050_rcp_45,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_tridentata_2050_rcp_85,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_wyomingensis_2050_rcp_85,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_vaseyana_2050_rcp_85,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_tridentata_2070_rcp_45,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_wyomingensis_2070_rcp_45,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_vaseyana_2070_rcp_45,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_tridentata_2070_rcp_85,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_wyomingensis_2070_rcp_85,CRS(projection("+init=epsg:2163")))),
+                     rgeos::gArea(spTransform(ens_vaseyana_2070_rcp_85,CRS(projection("+init=epsg:2163"))))
+                    )
+tbl_2$percOverlap <- tbl_2$rangeSize/c(rep(total_area_2050_45,3),rep(total_area_2050_85,3),rep(total_area_2070_45,3),rep(total_area_2070_85,3))
+tbl_2[tbl_2$spp == "tridentata",]$percChange <- (tbl_2[tbl_2$spp == "tridentata",]$rangeSize/tbl_1[tbl_1$spp == "tridentata",]$rangeSize)-1
+tbl_2[tbl_2$spp == "vaseyana",]$percChange <- (tbl_2[tbl_2$spp == "vaseyana",]$rangeSize/tbl_1[tbl_1$spp == "vaseyana",]$rangeSize)-1
+tbl_2[tbl_2$spp == "wyomingensis",]$percChange <- (tbl_2[tbl_2$spp == "wyomingensis",]$rangeSize/tbl_1[tbl_1$spp == "wyomingensis",]$rangeSize)-1
+write.csv(tbl_2,"tbl.2.csv",row.names=F)
