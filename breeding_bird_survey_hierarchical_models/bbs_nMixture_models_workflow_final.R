@@ -3,9 +3,12 @@
 # Author: Kyle Taylor (kyle.taylor@pljv.org)
 #
 
+HOME <- Sys.getenv("HOME")
+
 #
 # calculate site-level landscape metrics for the focal route [parallelized]
 #
+
 processFocalRoute <- function(route=NULL){
   require(landscapeAnalysis)
   require(habitatWorkbench)
@@ -96,7 +99,8 @@ if(!file.exists("site_level_parameters.csv")){
   out <- read.csv("site_level_parameters.csv")
 }
 
-## calculate our isolation metrics (at 3.3 and 30 km2 scales)
+## CALCULATE OUR ISOLATION METRICS AT 1650 AND 30000 METER BUFFER DISTANCES
+
 if(!grepl(names(out),pattern="isolation_3.3")){
       landcover <- raster("/home/ktaylora/PLJV/landcover/orig/Final_LC_8bit.tif")
     s_bbsRoutes <-lapply(s_bbsRoutes,spTransform,CRSobj=CRS(projection(landcover)))
@@ -151,7 +155,7 @@ if(!grepl(names(out),pattern="isolation_30km")){
 
 write.csv(out,"site_level_parameters.csv",row.names=F)
 
-# now let's fetch our BBS count data and associate it with the focal routes
+# FETCH BBS COUNT DATA AND ASSOCIATE IT WITH THE FOCAL ROUTES
 
 habitatWorkbench:::.fetchBbsStopData();
 t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F.*.zip")); # ROUTES here are designated by their 3-digit code only. See the accompanying statenum column
@@ -197,8 +201,7 @@ for(y in sort(unique(t_counts$year))){
     output <- cbind(output,unique(cnts_focal))
   }
 }; names <- names(output); output <- cbind(RTENO=routes,output[,names[grepl(names,pattern="cnt[.]")]])
-
-# bind to our sampled landscape metrics
+# BIND TO OUR LANDSCAPE METRICS TO MAKE A FULL TABLE OF SITE-LEVEL COVARIATES
 out <- read.csv("site_level_parameters.csv")
   out <- out[!duplicated(out$route),]
     out <- out[out$route %in% output$RTENO,]
@@ -212,7 +215,8 @@ out <- read.csv("site_level_parameters.csv")
 
 # for show, we can merge our tabular data into our spatial data
 s<-s_bbsRoutes; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
-# grab accompanying tabular data for fitting coefficients for detection
+# GRAB ACCOMPANYING TABULAR DATA FOR FITTING COEFFICIENTS FOR DETECTION
+detection_covariates <- list()
 # calculate noise and cars present
 habitatWorkbench:::.fetchVehicleData()
 unzip("VehicleSummary.zip")
@@ -220,22 +224,48 @@ t <- read.csv("VehicleSummary.csv")
   t$RTENO <- paste(t$state,sprintf("%03d", t$Route),sep="")
     t <- t[t$RTENO %in% out$route,]
       t <- t[,c("RTENO","Year","StopTotal","NoiseTotal")]
-  # transpose by year
-  t_data_full <- matrix()
-  for(y in 1999:2014){
-    # create a matrix with NAs for all routes
-    t_data <- matrix(rep(NA,2*length(out$route)),ncol=2)
-      rownames(t_data) <- out$route
-    # parse the noise and car presences for THIS year
-    t_focal <- as.matrix(t[t$Year == y,c(3,4)])
-      colnames(t_focal) <- paste(names(t)[3:4],y,sep=".")
-      rownames(t_focal) <- t[t$Year == y,]$RTENO
-    # assign data to those routes that actually have observations this year
-    t_data[which(rownames(t_data) %in% rownames(t_focal)),] <- t_focal[which(rownames(t_focal) %in% rownames(t_data)),]
-      colnames(t_data) <- paste(names(t)[3:4],y,sep=".")
-    if(ncol(t_data_full)>=2){
-      t_data_full <- cbind(t_data_full,t_data)
-    } else {
-      t_data_full <- t_data
-    }
+# transpose by year
+t_data_full <- matrix()
+for(y in 1999:2014){
+  # create a matrix with NAs for all routes
+  t_data <- matrix(rep(NA,2*length(out$route)),ncol=2)
+    rownames(t_data) <- out$route
+  # parse the noise and car presences for THIS year
+  t_focal <- as.matrix(t[t$Year == y,c(3,4)])
+    colnames(t_focal) <- paste(names(t)[3:4],y,sep=".")
+    rownames(t_focal) <- t[t$Year == y,]$RTENO
+    t_focal <- t_focal[!duplicated(rownames(t_focal)),] # ensure we don't have duplicate routes
+  # assign data to those routes that actually have observations this year
+  t_data[which(rownames(t_data) %in% rownames(t_focal)),] <- t_focal[which(rownames(t_focal) %in% rownames(t_data)),]
+    colnames(t_data) <- paste(names(t)[3:4],y,sep=".")
+  if(ncol(t_data_full)>=2){
+    t_data_full <- cbind(t_data_full,t_data)
+  } else {
+    t_data_full <- t_data
   }
+}
+# assign to a named list that 'unmarked' will understand
+detection_covariates[[1]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Noise")]) # Noise Observed at Routes
+detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Stop")])  # Number of Cars Observed at Routes
+# calculate distance to transmission lines along each route
+# -- removed this because it doesn't vary across time.  Consider using it as a site-level covariate, perhaps
+# require(raster)
+# distanceToTrans <- raster(paste(HOME,"/PLJV/infrastructure/products/bcr_18_19_distanceToTransmissionLines.tif",sep=""))
+#               t <- raster::extract(distanceToTrans,spTransform(s_bbsRoutes,CRS(projection(distanceToTrans)),df=T,progress='text')
+#                 t <- unlist(lapply(t,FUN=mean))
+# NOTE: An 'observer' variable is conspicuously missing here on probability of detection.  I don't want to make a flat assumption in extrapolating observer bias
+# in geographic space.  Let's see how well the model does without it.
+
+# calculate a dummy variable representing years in the time-series (one for each route)
+detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(years))],nrow(t_data_full)),nrow=nrow(t_data_full))
+names(detection_covariates) <- c("noise","cars","timeTrend") # name our list for compatibility with 'unmarked'
+
+# build a model in 'unmarked'
+require(unmarked)
+t_pco <- unmarked::unmarkedFramePCO(y=out[,8:ncol(out)],siteCovs=out[,2:7], obsCovs=detection_covariates, numPrimary=length(1999:2014))
+
+m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
+                     gammaformula=~1,
+                     omegaformula=~1,
+                     pformula=~noise+cars+timeTrend,
+                     data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
