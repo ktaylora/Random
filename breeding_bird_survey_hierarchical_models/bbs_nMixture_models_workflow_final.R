@@ -178,7 +178,8 @@ write.csv(out,"site_level_parameters.csv",row.names=F)
 #     output <- cbind(output,unique(cnts_focal))
 #   }
 # }; names <- names(output); output <- cbind(RTENO=routes,output[,names[grepl(names,pattern="cnt[.]")]])
-# # BIND TO OUR LANDSCAPE METRICS TO MAKE A FULL TABLE OF SITE-LEVEL COVARIATES
+
+# BIND TO OUR LANDSCAPE METRICS TO MAKE A FULL TABLE OF SITE-LEVEL COVARIATES
 # out <- read.csv("site_level_parameters.csv")
 #   out <- out[!duplicated(out$route),]
 #     out <- out[out$route %in% output$RTENO,]
@@ -193,6 +194,24 @@ write.csv(out,"site_level_parameters.csv",row.names=F)
 # # for show, we can merge our tabular data into our spatial data
 # s<-s_bbsRoutes[!duplicated(s_bbsRoutes@data$RTENO),]; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
 
+out <- out[order(out$route,decreasing=F),]
+t_counts <- s_bbsRoutes[,c('LBCU','Year','rteno')]@data
+  t_counts <- t_counts[order(t_counts$rteno,decreasing=F),]
+    t_counts <- split(t_counts,f=as.factor(t_counts$rteno))
+counts_table <- matrix(rep(NA,47*length(1998:2013)),ncol=length(1998:2013))
+  colnames(counts_table) <- paste("cnts",1998:2013,sep=".")
+  rownames(counts_table) <- out$route
+for(i in 1:47){
+  focal_count <- do.call(rbind,lapply(split(t_counts[[i]],f=as.factor(t_counts[[i]]$Year)),FUN=colSums))
+  counts_table[i,grepl(x=colnames(counts_table),pattern=paste(rownames(focal_count),collapse="|"))] <- focal_count[,1]
+}; rm(t_counts);
+counts_table <- data.frame(counts_table)
+  counts_table$route <- rownames(counts_table)
+
+
+out <- cbind(out,counts_table[,1:(ncol(counts_table)-1)])
+
+
 # GRAB ACCOMPANYING TABULAR DATA FOR FITTING COEFFICIENTS FOR DETECTION
 detection_covariates <- list()
 # calculate noise and cars present
@@ -202,9 +221,9 @@ t <- read.csv("VehicleSummary.csv")
   t$RTENO <- paste(t$state,sprintf("%03d", t$Route),sep="")
     t <- t[t$RTENO %in% out$route,]
       t <- t[,c("RTENO","Year","StopTotal","NoiseTotal")]
-# transpose by year
+# transpose noise and cars by year
 t_data_full <- matrix()
-for(y in 1999:2014){
+for(y in 1998:2013){
   # create a matrix with NAs for all routes
   t_data <- matrix(rep(NA,2*length(out$route)),ncol=2)
     rownames(t_data) <- out$route
@@ -236,19 +255,19 @@ detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t
 # in geographic space.  Let's see how well the model does without it.
 
 # calculate a dummy variable representing years in the time-series (one for each route)
-detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(years))],nrow(t_data_full)),nrow=nrow(t_data_full))
+detection_covariates[[3]] <- matrix(rep(letters[seq(1,length(1998:2013))],nrow(t_data_full)),nrow=nrow(t_data_full))
 names(detection_covariates) <- c("noise","cars","timeTrend_") # name our list for compatibility with 'unmarked'
 
 # build a model in 'unmarked'
 require(unmarked)
-t_pco <- unmarked::unmarkedFramePCO(y=out[,8:ncol(out)],siteCovs=out[,2:7], obsCovs=detection_covariates, numPrimary=length(1999:2014))
+t_pco <- unmarked::unmarkedFramePCO(y=out[,8:ncol(out)],siteCovs=out[,2:7], obsCovs=detection_covariates, numPrimary=length(1998:2013))
 
 # marginally better than null model
-m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
+m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_1650m+isolation_30000m,
                      gammaformula=~1,
                      omegaformula=~1,
-                     pformula=~noise+cars+timeTrend,
-                     data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
+                     pformula=~noise+cars+timeTrend_,
+                     data=t_pco,mixture='ZIP',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*2.3))
 
 # worse than null model
 # m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
@@ -258,10 +277,10 @@ m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_to
 #                     data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*1.3))
 
 # % error variance explained by model vs null
-# model_sse <- sum(as.vector(m_lbcu@data@y-fitted(m_lbcu))^2, na.rm=T)
-#   null=ceiling(median(as.numeric(unlist(na.omit(out[,grepl(names(out),pattern="cnt")]))))) # just take the median as a null count model
-#     null_sse <- sum((out[,grepl(names(out),pattern="cnt")]-null)^2,na.rm=T)
-# cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
+model_sse <- sum(as.vector(m_lbcu@data@y-fitted(m_lbcu))^2, na.rm=T)
+  null=ceiling(median(as.numeric(unlist(na.omit(out[,grepl(names(out),pattern="cnt")]))))) # just take the median as a null count model
+    null_sse <- sum((out[,grepl(names(out),pattern="cnt")]-null)^2,na.rm=T)
+cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
 
 ## CALCULATE LANDSCAPE METRICS WITHIN GPLCC CD UNITS FOR BBS MODELS
 ## CALCULATE LANDSCAPE METRICS FOR NON-PARAMETRIC MODELS
