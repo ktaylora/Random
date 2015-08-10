@@ -113,64 +113,26 @@ if(!file.exists("site_level_parameters.csv")){
 
 ## CALCULATE OUR ISOLATION METRICS AT 1650 AND 30000 METER BUFFER DISTANCES
 
-if(!grepl(names(out),pattern="isolation_1650m")){
-    s_bbsRoutes_sampling <-lapply(s_bbsRoutes_sampling,spTransform,CRSobj=CRS(projection(lc)))
-      centroids <- parLapply(cl=cl,s_bbsRoutes_sampling,fun=getBbsRouteCoords,centroid=T)     # calculate the centroid of each route
-  buffers_1650m <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=3300/2)      # calculate our 3.3 km regions
-    m <- mcmapply(buffers_1650m, FUN=raster::crop, MoreArgs=list(x=lc))
-      buffers_1650m <- mcmapply(FUN=raster::mask, x=m, mask=buffers_1650m); rm(m);
-        buffers_1650m <- lReclass(buffers_1650m,inValues=c(31,37,39,71,75))
-          buffers_1650m <- parLapply(cl=cl,buffers_1650m,fun=landscapeAnalysis::rasterToPolygons)
-            # check for NA values
-            na_values<-as.vector(unlist(lapply(X=buffers_1650m,FUN=is.na)))
-            if(sum(na_values)>0){
-              buffers_1650m[na_values] <- buffers_1650m[which(!na_values)[1]] # overwrite our NA values with something valid
-              buffers_1650m<-lapply(X=buffers_1650m,FUN=getSpPPolygonsLabptSlots)
-
-            } else {
-              buffers_1650m<-lapply(X=buffers_1650m,FUN=getSpPPolygonsLabptSlots)
-            }
-            # do our NN assessment
-            d <- function(x,na.rm=F){ o<-try(FNN::knn.dist(x,k=1)); if(class(o) != "try-error") { x <- o; } else { x[[i]] <- NA }; return(x)}
-            buffers_1650m <- lapply(buffers_1650m,FUN=d);rm(d);
-              buffers_1650m <- lapply(buffers_1650m, FUN=mean)
-                buffers_1650m[na_values] <- NA # restore our NA values
-                  buffers_1650m
-                    out$isolation_1650m<-as.vector(unlist(buffers_1650m))
-}
-
+lc <- raster(paste(sep="",HOME,"/PLJV/landcover/orig/Final_LC_8bit.tif"))
 centroids <- parLapply(cl=cl,s_bbsRoutes_sampling,fun=getBbsRouteCoords,centroid=T)
-  buffers <- subsampleSurface(pts=do.call(rbind,centroids),width=3300/2)
+  buffers <- subsampleSurface(x=lc,
+                              pts=SpatialPoints(do.call(rbind,centroids),proj4string=CRS("+proj=utm +zone=14 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")),
+                              width=3300/2)
     buffers <- lReclass(buffers,inValues=c(31,37,39,71,75))
-out <- lapply(buffers,FUN=calcPatchIsolation, parallel=T)
+t_isolation <- calcPatchIsolation(buffers,parallel=T)
+out$isolation_1650m <- as.vector(unlist(t_isolation))
 
-if(!grepl(names(out),pattern="isolation_30000m")){
-    s_bbsRoutes_sampling <-lapply(s_bbsRoutes_sampling,spTransform,CRSobj=CRS(projection(lc)))
-      centroids <- parLapply(cl=cl,s_bbsRoutes,fun=getBbsRouteCoords,centroid=T) # calculate the centroid of each route
-  buffers_30000m <- parLapply(cl=cl,X=centroids,fun=rgeos::gBuffer,width=30000)      # calculate our 3.3 km regions
-    m <- mcmapply(buffers_30000m, FUN=raster::crop, MoreArgs=list(x=lc))
-      buffers_30000m <- mcmapply(FUN=raster::mask, x=m, mask=buffers_30000m); rm(m);
-        buffers_30000m <- lReclass(buffers_30000m,inValues=c(31,37,39,71,75))
-          buffers_30000m <- parLapply(cl=cl,buffers_30000m,fun=landscapeAnalysis::rasterToPolygons)
-            # check for NA values
-            na_values<-as.vector(unlist(lapply(X=buffers_30000m,FUN=is.na)))
-            if(sum(na_values)>0){
-              buffers_30000m[na_values] <- buffers_30000m[which(!na_values)[1]] # overwrite our NA values with something valid
-              buffers_30000m<-lapply(X=buffers_30000m,FUN=getSpPPolygonsLabptSlots)
-            } else {
-              buffers_30000m<-lapply(X=buffers_30000m,FUN=getSpPPolygonsLabptSlots)
-            }
-            # do our NN assessment
-            d <- function(x,na.rm=F){ o<-try(FNN::knn.dist(x,k=1)); if(class(o) != "try-error") { x <- o; } else { x[[i]] <- NA }; return(x)}
-            buffers_30000m <- lapply(buffers_30000m,FUN=d);rm(d);
-              buffers_30000m <- lapply(buffers_30000m, FUN=mean)
-                buffers_30000m[na_values] <- NA # restore our NA values
-                    out$isolation_30000m<-as.vector(unlist(buffers_30000m))
-}
+  buffers <- subsampleSurface(x=lc,
+                              pts=SpatialPoints(do.call(rbind,centroids),proj4string=CRS("+proj=utm +zone=14 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")),
+                              width=30000)
+    buffers <- lReclass(buffers,inValues=c(31,37,39,71,75))
+t_isolation <- calcPatchIsolation(buffers,parallel=T)
+out$isolation_30000m <- as.vector(unlist(t_isolation))
 
 write.csv(out,"site_level_parameters.csv",row.names=F)
 
 # FETCH BBS COUNT DATA AND ASSOCIATE IT WITH THE FOCAL ROUTES
+# NOTE: The default shapefile published by USGS is horribly out-of-date.  Don't use it.
 #
 # habitatWorkbench:::.fetchBbsStopData();
 # t_counts <- habitatWorkbench:::.unpackToCSV(list.files(pattern="F.*.zip")); # ROUTES here are designated by their 3-digit code only. See the accompanying statenum column
@@ -230,6 +192,7 @@ write.csv(out,"site_level_parameters.csv",row.names=F)
 #
 # # for show, we can merge our tabular data into our spatial data
 # s<-s_bbsRoutes[!duplicated(s_bbsRoutes@data$RTENO),]; s@data <- out[which(out$route %in% s_bbsRoutes$RTENO),]
+
 # GRAB ACCOMPANYING TABULAR DATA FOR FITTING COEFFICIENTS FOR DETECTION
 detection_covariates <- list()
 # calculate noise and cars present
@@ -259,6 +222,7 @@ for(y in 1999:2014){
     t_data_full <- t_data
   }
 }
+
 # assign to a named list that 'unmarked' will understand
 detection_covariates[[1]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Noise")]) # Noise Observed at Routes
 detection_covariates[[2]] <- as.matrix(data.frame(t_data_full)[,grepl(colnames(t_data_full),pattern="Stop")])  # Number of Cars Observed at Routes
@@ -298,3 +262,8 @@ m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_to
 #   null=ceiling(median(as.numeric(unlist(na.omit(out[,grepl(names(out),pattern="cnt")]))))) # just take the median as a null count model
 #     null_sse <- sum((out[,grepl(names(out),pattern="cnt")]-null)^2,na.rm=T)
 # cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
+
+## CALCULATE LANDSCAPE METRICS WITHIN GPLCC CD UNITS FOR BBS MODELS
+## CALCULATE LANDSCAPE METRICS FOR NON-PARAMETRIC MODELS
+## EXTRAPOLATE BBS MODELS
+## EXTRAPOLATE NON-PARAMETRIC MODELS
