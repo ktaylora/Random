@@ -262,12 +262,25 @@ names(detection_covariates) <- c("noise","cars","timeTrend_") # name our list fo
 require(unmarked)
 t_pco <- unmarked::unmarkedFramePCO(y=out[,8:ncol(out)],siteCovs=out[,2:7], obsCovs=detection_covariates, numPrimary=length(1998:2013))
 
-# marginally better than null model
-m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_1650m+isolation_30000m,
-                     gammaformula=~1,
-                     omegaformula=~1,
-                     pformula=~noise+cars+timeTrend_,
-                     data=t_pco,mixture='ZIP',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*2.3))
+# m_lbcu_zip <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_1650m+isolation_30000m,
+#                      gammaformula=~1,
+#                      omegaformula=~1,
+#                      pformula=~noise+cars+timeTrend_,
+#                      data=t_pco,mixture='ZIP',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*2.1))
+#
+# m_lbcu_nb <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_1650m+isolation_30000m,
+#                     gammaformula=~1,
+#                     omegaformula=~1,
+#                     pformula=~noise+cars+timeTrend_,
+#                     data=t_pco,mixture='NB',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*2.1))
+
+# pois model demonstrates ~7% improvement over null model in explaining residual error.  ZIP demonstrates similar performance, and negative binomial
+# doesn't work for this question.  Perhaps if we took the ratio of counts to number of BBS stops, NB would be useful. -Kyle
+m_lbcu_pois <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_1650m+isolation_30000m,
+                    gammaformula=~1,
+                    omegaformula=~1,
+                    pformula=~noise+cars+timeTrend_,
+                    data=t_pco,mixture='P',se=T, K=floor(max(max(out[,grepl(names(out),pattern="cnt")],na.rm=T))*2.1))
 
 # worse than null model
 # m_lbcu <- pcountOpen(lambdaformula=~grass_total_area+grass_mean_patch_area+ag_total_area+shrub_total_area+isolation_3.3km+isolation_30km,
