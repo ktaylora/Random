@@ -298,27 +298,48 @@ cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
 ## CALCULATE LANDSCAPE METRICS WITHIN GPLCC CD UNITS FOR BBS MODELS
 ## CALCULATE LANDSCAPE METRICS FOR NON-PARAMETRIC MODELS
 ## EXTRAPOLATE BBS MODELS
-m_buow <- function(x){
+
+ratioCU_to_BBS_Route <- (4.253/(3.1415926*(39.42/2)^2))
+
+m_buow <- function(x,type="normalized"){
   x <- rowSums(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')]*as.numeric(0.000717,0.001151,0.001088,0.001379,-0.000491,-0.004840))
     x <- as.vector(x+1.997769) # intercept
+    # normalize to regional counts?
+    if(grepl(tolower(type),pattern="normal")){
       x <- x/mean(x) # normalize to the mean count
         x <- x/max(x) # scale to values consistent with RF
+    # scale our counts from the area of a BBS route to the area of our conservation delivery units
+    } else if (grepl(tolower(type),pattern="counts")){
+      x <- x*ratioCU_to_BBS_Route
+    }
   return(x)
 }
 
-m_feha<- function(x){
+m_feha<- function(x,type="normalized"){
   x <- rowSums(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')]*as.numeric(-0.001144,0.000341,-0.002519,-0.001254,-0.000543,0.005354))
     x <- as.vector(x+1.164134) # intercept
+    # normalize to regional counts?
+    if(grepl(tolower(type),pattern="normal")){
       x <- x/mean(x) # normalize to the mean count
         x <- x/max(x) # scale to values consistent with RF
+    # scale our counts from the area of a BBS route to the area of our conservation delivery units
+    } else if (grepl(tolower(type),pattern="counts")){
+      x <- x*ratioCU_to_BBS_Route
+    }
   return(x)
 }
 
-m_lbcu<- function(x){
+m_lbcu<- function(x,type="normalized"){
   x <- rowSums(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')]*as.numeric(2.81e-03,-4.58e-03,3.21e-04,6.46e-05,3.31e-03,-4.07e-04))
     x <- as.vector(x+7.36e-02) # intercept
+    # normalize to regional counts?
+    if(grepl(tolower(type),pattern="normal")){
       x <- x/mean(x) # normalize to the mean count
         x <- x/max(x) # scale to values consistent with RF
+    # scale our counts from the area of a BBS route to the area of our conservation delivery units
+    } else if (grepl(tolower(type),pattern="counts")){
+      x <- x*ratioCU_to_BBS_Route
+    }
   return(x)
 }
 
