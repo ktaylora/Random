@@ -10,9 +10,6 @@ require(raster)
 
 require(landscapeAnalysis)
 
-#source("~/Projects/landscape-analysis/ktaylor_generalSpatialAnalysis.R") # contains home-brew accessory functions for GIS-related stuff in R
-#source("~/Projects/landscape-analysis/ktaylor_landscapeMetrics.R")       # contains some stuff related to list handling and georaster operations 
-
 #
 # LOCAL FUNCTIONS 
 #
@@ -27,6 +24,7 @@ calculateLMetricsForFocalCover <- function(sampleUnits=NULL,habitat=NULL,metrics
       # iterate over our samples, calculating statistics as we go
       row       <- rep(NA,length(metrics));
       lm_output <- lCalculateLandscapeMetrics(x=out, metric=metrics, DEBUG=F)
+        names(lm_output) <- metrics
       
       for(j in 1:length(metrics)){ row[j] <- median(metricsListToVector(lm_output, metrics[j])) }
       row <- c(i,row);
