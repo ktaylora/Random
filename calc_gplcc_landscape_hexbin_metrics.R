@@ -26,7 +26,7 @@ calculateLMetricsForFocalCover <- function(sampleUnits=NULL,habitat=NULL,metrics
       lm_output <- lCalculateLandscapeMetrics(x=out, metric=metrics, DEBUG=F)
         names(lm_output) <- metrics
       
-      for(j in 1:length(metrics)){ row[j] <- median(metricsListToVector(lm_output, metrics[j])) }
+      for(j in 1:length(metrics)){ row[j] <- median(metricsListToVector(lm_output, metrics[j]),na.rm=T) }
       row <- c(i,row);
       
       # contribute to table
