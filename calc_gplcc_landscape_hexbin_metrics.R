@@ -24,7 +24,7 @@ calculateLMetricsForFocalCover <- function(sampleUnits=NULL,habitat=NULL,metrics
       # iterate over our samples, calculating statistics as we go
       row       <- rep(NA,length(metrics));
       lm_output <- lCalculateLandscapeMetrics(x=out, metric=metrics, DEBUG=F)
-        names(lm_output) <- metrics
+        names(lm_output) <- metrics[1:length(lm_output)]
       
       for(j in 1:length(metrics)){ row[j] <- median(metricsListToVector(lm_output, metrics[j]),na.rm=T) }
       row <- c(i,row);
@@ -75,7 +75,7 @@ parseStoredMetricsForRanges <- function(path=".") {
 #
 
 s    <- readOGR(paste(Sys.getenv("HOME"),"/PLJV/boundaries/GPLCC Pilot/GPLCC_Pilot_Region/",sep=""),"pilot_region_hexagonal_units",verbose=F)
-r    <- raster(paste(Sys.getenv("HOME"),"/PLJV/landcover/Final_LC_8bit",".tif",sep=""))
+r    <- raster(paste(Sys.getenv("HOME"),"/PLJV/landcover/orig/Final_LC_8bit",".tif",sep=""))
 
 argv <- commandArgs(trailingOnly=T)
 
@@ -90,7 +90,7 @@ if(as.numeric(argv[2]) > nrow(s)){ argv[2] <- nrow(s) }
 unitRange           <- seq(as.numeric(argv[1]),as.numeric(argv[2]),1)
 hexSampleUnits      <- cropRasterByPolygons(r=r, s=s[unitRange,])
 sampleUnitCentroids <- NULL
-ids                 <- as.vector(s$id)
+ids                 <- as.vector(s$id)[unitRange]
 
 # define our cover types 
 grass_habitat <- c(39, # CRP
@@ -102,66 +102,33 @@ agricultural_habitat <- c(38,202,201,203,204,205,206,207,208,209,210) # Cropland
 
 shrubland_habitat <- c(82, # Shrubland
                        83, # Mesquite
-                       81  # Savannah
+                       81, # Savannah
                        85, # Shinnery
                        87) # Sand sage
 
 if(!exists("t_landcover_grass",envir=stored)){
   cat(" -- calculating grassland fragstats\n");
   # calculate landscape metrics for hexagonal units 
-  t_landcover_grass <- calculateLMetricsForFocalCover(hexSampleUnits,habitat=grass_habitat, metrics=c("total.area","mean.patch.area","shape.index"), bufferDistance=750);
-
+  t_landcover_grass <- calculateLMetricsForFocalCover(hexSampleUnits,habitat=grass_habitat, metrics=c("total.area","mean.patch.area"), bufferDistance=750);
+    t_landcover_grass$id <- ids # ensure proper naming of IDs
   assign(x="t_landcover_grass",value=t_landcover_grass, envir=stored);  
   save(list=ls(stored),file=paste(argv[1],"-",argv[2],"_so.far.rdata",sep=""),envir=stored,compress=T);
 }
 
-#if(!exists("t_connectivity_grass",envir=stored)){
-#cat(" -- calculating grassland connectivity\n");
-#  sampleUnitCentroids <- SpatialPoints(coords=getSpPPolygonsLabptSlots(s[unitRange,]),proj4string=CRS(projection(s)));
-#  t_connectivity_grass <- subsampleSurface(x=r, pts=sampleUnitCentroids,width=20000);
-#    t_connectivity_grass <- lReclass(t_connectivity_grass, inValues=grass_habitat)
-#      t_connectivity_grass <- lCalculateLandscapeMetrics(x=t_connectivity_grass, metric="patch.issolation",DEBUG=F);
-#
-#  assign(x="t_connectivity_grass",value=t_connectivity_grass, envir=stored);
-#  save(list=ls(stored),file=paste(argv[1],"-",argv[2],"_so.far.rdata",sep=""),envir=stored,compress=T);
-#}
-
 if(!exists("t_landcover_ag",envir=stored)){
   cat(" -- calculating ag fragstats\n")
   # calculate landscape metrics for hexagonal units 
-  t_landcover_ag <- calculateLMetricsForFocalCover(hexSampleUnits,habitat=agricultural_habitat, metrics=c("total.area","mean.patch.area","shape.index"), bufferDistance=750);
-
+  t_landcover_ag <- calculateLMetricsForFocalCover(hexSampleUnits,habitat=agricultural_habitat, metrics=c("total.area","mean.patch.area"), bufferDistance=750);
+    t_landcover_ag$id <- ids # ensure proper naming of IDs
   assign(x="t_landcover_ag",value=t_landcover_ag, envir=stored);
   save(list=ls(stored),file=paste(argv[1],"-",argv[2],"_so.far.rdata",sep=""),envir=stored, compress=T);
 }
 
-#if(!exists("t_connectivity_ag",envir=stored)){
-#cat(" -- calculating agriculture connectivity\n");
-#  sampleUnitCentroids <- SpatialPoints(coords=getSpPPolygonsLabptSlots(s[unitRange,]),proj4string=CRS(projection(s)));
-#  t_connectivity_ag <- subsampleSurface(x=r, pts=sampleUnitCentroids,width=20000);
-#    t_connectivity_ag <- lReclass(t_connectivity_ag, inValues=agricultural_habitat)
-#      t_connectivity_ag <- lCalculateLandscapeMetrics(x=t_connectivity_ag, metric="patch.issolation",DEBUG=F);
-#
-#  assign(x="t_connectivity_ag",value=t_connectivity_ag, envir=stored);
-#  save(list=ls(stored),file=paste(argv[1],"-",argv[2],"_so.far.rdata",sep=""),envir=stored,compress=T);
-#}
-
 if(!exists("t_landcover_shrub",envir=stored)){
   cat(" -- calculating shrub fragstats\n");
   # calculate landscape metrics for hexagonal units 
-  t_landcover_shrub <- calculateLMetricsForFocalCover(hexSampleUnits,habitat=shrubland_habitat, metrics=c("total.area","mean.patch.area","shape.index"), bufferDistance=750);
-
+  t_landcover_shrub <- calculateLMetricsForFocalCover(hexSampleUnits,habitat=shrubland_habitat, metrics=c("total.area","mean.patch.area"), bufferDistance=750);
+    t_landcover_shrub$id <- ids # ensure proper naming of IDs
   assign(x="t_landcover_shrub",value=t_landcover_shrub, envir=stored);
   save(list=ls(stored),file=paste(argv[1],"-",argv[2],"_so.far.rdata",sep=""),envir=stored,compress=T);
 }
-
-#if(!exists("t_connectivity_shrub",envir=stored)){
-#cat(" -- calculating shrub connectivity\n");
-#  sampleUnitCentroids <- SpatialPoints(coords=getSpPPolygonsLabptSlots(s[unitRange,]),proj4string=CRS(projection(s)));
-#  t_connectivity_shrub <- subsampleSurface(x=r, pts=sampleUnitCentroids,width=20000);
-#    t_connectivity_shrub <- lReclass(t_connectivity_shrub, inValues=shrubland_habitat)
-#      t_connectivity_shrub <- lCalculateLandscapeMetrics(x=t_connectivity_shrub, metric="patch.issolation",DEBUG=F);
-#
-#  assign(x="t_connectivity_shrub",value=t_connectivity_shrub, envir=stored);
-#  save(list=ls(stored),file=paste(argv[1],"-",argv[2],"_so.far.rdata",sep=""),envir=stored,compress=T);
-#}
