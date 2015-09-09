@@ -82,10 +82,16 @@ if(length(ls(pattern="bioclim_absences")) == 0){
   assign(x="bioclim_absences", value=data.frame(extract(bioclim,absences)), envir=session_data)
   save(list=ls(session_data), envir=session_data, file=s, compress=T);
 }
+
 # classify our landcover into various cover types
 session_data        <- new.env(); load(s,envir=session_data);
-presence_landcover  <- subsampleSurface(r,pts=presences, width=750)
-absence_landcover   <- subsampleSurface(r,pts=absences, width=750)
+if(length(ls(session_data,pattern="absence_landcover"))==0){
+  presence_landcover  <- subsampleSurface(r,pts=presences, width=750)
+  absence_landcover   <- subsampleSurface(r,pts=absences, width=750)
+  assign("presence_landcover", value=presence_landcover, envir=session_data)
+  assign("absence_landcover", value=absence_landcover, envir=session_data)
+  save(list=ls(session_data), envir=session_data, file=s, compress=T); 
+}
 
 if(length(ls(session_data,pattern="ag_absences"))==0){
   cat(" -- reclassing presence/absence landcover for:",s,"\n");
@@ -108,17 +114,17 @@ if(length(ls(session_data,pattern="ag_absences"))==0){
 	t_landcover_ag_presences    <- cbind(resp=1,calculateLMetricsForFocalCover(get("ag_presences",session_data), metrics=c("total.area","mean.patch.area")));
 	t_landcover_ag_absences     <- cbind(resp=0,calculateLMetricsForFocalCover(get("ag_absences",session_data), metrics=c("total.area","mean.patch.area")));
 
-	t_1 <- cbind(t_landcover_grass_presences[,1:5], t_landcover_ag_presences[,3:5])
-       t_2 <- cbind(t_landcover_grass_absences[,1:5], t_landcover_ag_absences[,3:5])
+	t_1 <- cbind(t_landcover_grass_presences[,1:2], t_landcover_ag_presences[,2:3])
+        t_2 <- cbind(t_landcover_grass_absences[,1:2], t_landcover_ag_absences[,2:3])
 
-	 t<-rbind(t_1,t_2);
+	t <- rbind(t_1,t_2);
 
 	names(t) <-
 	c(names(t_landcover_grass_presences)[1:2],paste("grass_",names(t_landcover_grass_presences)[3:5],sep=""),
 		                                        paste("ag_",names(t_landcover_ag_presences)[3:5],sep=""));
 
 	t <-cbind(t,rbind(get('presences_topography', envir=session_data), get('absences_topography', envir=session_data)))
-   t <- cbind(t,rbind(get('bioclim_presences',envir=session_data), get('bioclim_absences', envir=session_data)))
+        t <- cbind(t,rbind(get('bioclim_presences',envir=session_data), get('bioclim_absences', envir=session_data)))
 	assign(x="t", value=t, envir=session_data);
 	save(list=ls(session_data), envir=session_data, file=s, compress=T);
  }
