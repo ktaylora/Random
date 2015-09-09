@@ -130,14 +130,14 @@ if(length(ls(pattern="absences_topography")) == 0){
 	t_landcover_ag_presences    <- cbind(resp=1,calculateLMetricsForFocalCover(get("ag_presences",session_data), metrics=c("total.area")));
 	t_landcover_ag_absences     <- cbind(resp=0,calculateLMetricsForFocalCover(get("ag_absences",session_data), metrics=c("total.area")));
 
-	t_1 <- cbind(t_landcover_grass_presences[,1:2], t_landcover_ag_presences[,2])
-        t_2 <- cbind(t_landcover_grass_absences[,1:2], t_landcover_ag_absences[,2])
+	t_1 <- cbind(t_landcover_grass_presences[,1:2], t_landcover_ag_presences[,3])
+        t_2 <- cbind(t_landcover_grass_absences[,1:2], t_landcover_ag_absences[,3])
 
 	 t<-rbind(t_1,t_2);
 
 	names(t) <-
-	c(names(t_landcover_grass_presences)[1:2],paste("grass_",names(t_landcover_grass_presences)[2],sep=""),
-		                                        paste("ag_",names(t_landcover_ag_presences)[2],sep=""));
+	c(names(t_landcover_grass_presences)[1:2],paste("grass_",names(t_landcover_grass_presences)[3],sep=""),
+		                                        paste("ag_",names(t_landcover_ag_presences)[3],sep=""));
 
 	t <-cbind(t,rbind(get('presences_topography', envir=session_data), get('absences_topography', envir=session_data)))
         t <- cbind(t,rbind(get('bioclim_presences',envir=session_data), get('bioclim_absences', envir=session_data)))
