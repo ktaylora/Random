@@ -92,6 +92,20 @@ if(length(ls(session_data,pattern="absence_landcover"))==0){
   assign("absence_landcover", value=absence_landcover, envir=session_data)
   save(list=ls(session_data), envir=session_data, file=s, compress=T); 
 }
+# Extract topographic variables                                                           
+if(length(ls(pattern="absences_topography")) == 0){                                       
+    topo_roughness_27x27      <- raster(paste(HOME,"/PLJV/DEM/rough27.tif",sep=""))                                                      
+    t_27  <- extract(topo_roughness_27x27,presences)        
+                                                      
+    presences_topography <- data.frame(rough27=t_27)  
+                                                      
+    t_27  <- extract(topo_roughness_27x27,absences)   
+                                                      
+    absences_topography <- data.frame(rough27=t_27)   
+                                                      
+    rm(t_27);                                         
+    save.image(file=s,compress=T)                     
+};        
 
 if(length(ls(session_data,pattern="ag_absences"))==0){
   cat(" -- reclassing presence/absence landcover for:",s,"\n");

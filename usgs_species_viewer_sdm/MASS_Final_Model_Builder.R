@@ -82,10 +82,16 @@ if(length(ls(pattern="bioclim_absences")) == 0){
   assign(x="bioclim_absences", value=data.frame(extract(bioclim,absences)), envir=session_data)
   save(list=ls(session_data), envir=session_data, file=s, compress=T);
 }
-# classify our landcover into various cover types
-session_data        <- new.env(); load(s,envir=session_data);
-presence_landcover  <- subsampleSurface(r,pts=presences, width=750)
-absence_landcover   <- subsampleSurface(r,pts=absences, width=750)
+
+# classify our landcover into various cover types                                                                                                                               
+session_data        <- new.env(); load(s,envir=session_data);                                                                                                                       
+if(length(ls(session_data,pattern="absence_landcover"))==0){                                                  
+  presence_landcover  <- subsampleSurface(r,pts=presences, width=750)                                                                                                         
+  absence_landcover   <- subsampleSurface(r,pts=absences, width=750)                                                                                                           
+  assign("presence_landcover", value=presence_landcover, envir=session_data)                                                                                           
+  assign("absence_landcover", value=absence_landcover, envir=session_data)                                                                                                       
+  save(list=ls(session_data), envir=session_data, file=s, compress=T);                                                                                                           
+}  
 
 if(length(ls(session_data,pattern="ag_absences"))==0){
   cat(" -- reclassing presence/absence landcover for:",s,"\n");
@@ -101,24 +107,17 @@ if(length(ls(session_data,pattern="ag_absences"))==0){
 }
 # Extract topographic variables
 if(length(ls(pattern="absences_topography")) == 0){
-     cat(" -- sampling landcover for focal species\n");
-     #parse those points that are within some buffered distance of the GPLCC pilot region
-     if(is.na(argv[1])){ 
-       n <- unlist(strsplit(unlist(strsplit(s,split="_"))[1],split="/"));
-         n <- n[length(n)]
-           argv[1] <- paste(n,"_pres_abs_pts_usgs_species_viewer",sep="")
-     }
-                
+    topo_roughness_27x27      <- raster(paste(HOME,"/PLJV/DEM/rough27.tif",sep=""))
     t_27  <- extract(topo_roughness_27x27,presences)
-                
     presences_topography <- data.frame(rough27=t_27)
-		  
     t_27  <- extract(topo_roughness_27x27,absences)
      
     absences_topography <- data.frame(rough27=t_27)
                 
     rm(t_27);
-    save.image(file=s,compress=T)
+    assign(x="presences_topography", value=presences_topography, envir=session_data)
+    assign(x="absences_topography", value=absences_topography, envir=session_data) 
+    save(list=ls(session_data), envir=session_data, file=s, compress=T);
 }; 
 
 # Calculate and aggregate our landscape metrics and other explanatory variables into a data.frame
@@ -130,16 +129,13 @@ if(length(ls(pattern="absences_topography")) == 0){
 	t_landcover_ag_presences    <- cbind(resp=1,calculateLMetricsForFocalCover(get("ag_presences",session_data), metrics=c("total.area")));
 	t_landcover_ag_absences     <- cbind(resp=0,calculateLMetricsForFocalCover(get("ag_absences",session_data), metrics=c("total.area")));
 
-	t_1 <- cbind(t_landcover_grass_presences[,1:2], t_landcover_ag_presences[,3])
-        t_2 <- cbind(t_landcover_grass_absences[,1:2], t_landcover_ag_absences[,3])
+	t_1 <- cbind(t_landcover_grass_presences[,1:3], t_landcover_ag_presences[,3])
+          names(t_1) <- c("resp","id","total.area_grass","total.area_ag")
+        t_2 <- cbind(t_landcover_grass_absences[,1:3], t_landcover_ag_absences[,3])
+          names(t_2) <- c("resp","id","total.area_grass","total.area_ag")
+	t<-rbind(t_1,t_2);
 
-	 t<-rbind(t_1,t_2);
-
-	names(t) <-
-	c(names(t_landcover_grass_presences)[1:2],paste("grass_",names(t_landcover_grass_presences)[3],sep=""),
-		                                        paste("ag_",names(t_landcover_ag_presences)[3],sep=""));
-
-	t <-cbind(t,rbind(get('presences_topography', envir=session_data), get('absences_topography', envir=session_data)))
+	t <- cbind(t,rbind(get('presences_topography', envir=session_data), get('absences_topography', envir=session_data)))
         t <- cbind(t,rbind(get('bioclim_presences',envir=session_data), get('bioclim_absences', envir=session_data)))
 	assign(x="t", value=t, envir=session_data);
 	save(list=ls(session_data), envir=session_data, file=s, compress=T);
