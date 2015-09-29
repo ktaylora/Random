@@ -94,6 +94,7 @@ ids                 <- as.vector(s$id)[unitRange]
 
 # define our cover types 
 grass_habitat <- c(39, # CRP
+                   31, # CRP - Grass
                    37, # Pasture
                    71, # Mixedgrass
                    75) # Shortgrass
