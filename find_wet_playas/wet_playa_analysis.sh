@@ -20,17 +20,17 @@ elif [[ $1 == "-p" ]]; then
     echo " -- processing source landsat gzip files"
     for zip in `ls -1 *.gz`; do
         gunzip -q -c $zip | tar xvf -;
-        if [[ `ls -1 *.TIF | head -n1 | awk '{ print substr($1,1,3) }'` == "LT8" ]]; then # for Landsat 8, the wetness calculation is 6<4
+        if [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LT8" ]]; then # for Landsat 8, the wetness calculation is 6<4
           echo " -- Landsat 8 imagery detected.";
           tifs=`ls -1 *.TIF | grep -E "B4|B6"`;
           echo -n " -- processing: ";
           echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
-        elif [[ `ls -1 *.TIF | head -n1 | awk '{ print substr($1,1,3) }'` == "LE7" ]]; then # for Landsat 7, the wetness calculation is 5<3
+        elif [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LE7" ]]; then # for Landsat 7, the wetness calculation is 5<3
           echo " -- Landsat 7 imagery detected.";
           tifs=`ls -1 *.TIF | grep -E "B3|B5"`;
           echo -n " -- processing: ";
           echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
-        elif [[ `ls -1 *.TIF | head -n1 | awk '{ print substr($1,1,3) }'` == "LT5" ]]; then # for Landsat 5, the wetness calculation is 5<3
+        elif [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LT5" ]]; then # for Landsat 5, the wetness calculation is 5<3
           echo " -- Landsat 5 imagery detected.";
           tifs=`ls -1 *.TIF | grep -E "B3|B5"`;
           echo -n " -- processing: ";
