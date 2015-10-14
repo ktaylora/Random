@@ -24,17 +24,21 @@ elif [[ $1 == "-p" ]]; then
           echo " -- Landsat 8 imagery detected.";
           tifs=`ls -1 *.TIF | grep -E "B4|B6"`;
           echo -n " -- processing: ";
-          echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
+          echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
         elif [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LE7" ]]; then # for Landsat 7, the wetness calculation is 5<3
           echo " -- Landsat 7 imagery detected.";
           tifs=`ls -1 *.TIF | grep -E "B3|B5"`;
           echo -n " -- processing: ";
-          echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
+          echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
         elif [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LT5" ]]; then # for Landsat 5, the wetness calculation is 5<3
           echo " -- Landsat 5 imagery detected.";
           tifs=`ls -1 *.TIF | grep -E "B3|B5"`;
           echo -n " -- processing: ";
-          echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash
+          #rm -rf mask.tif
+          #echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=mask.tif" --calc=\"(B*A)>0\"" }' | /bin/bash
+          #echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B mask.tif --outfile="$1" --calc=\"(B*A)\"" }' | /bin/bash
+          #echo $tifs | awk '{ print "gdal_calc.py -A "$2" -B mask.tif --outfile="$2" --calc=\"(B*A)\"" }' | /bin/bash 
+          echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash
         else 
           echo " -- Unknown landsat imagery prefix. Quitting";
           exit;
