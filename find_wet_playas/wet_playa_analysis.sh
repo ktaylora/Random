@@ -16,30 +16,53 @@ if [ $# -eq 0 ]; then
     echo "usage: -p(rocess), -c(onvert to polygon shapefile) -(m)erge slices in CWD"
     exit;
 # PROCESS SOURCE IMAGERY
-elif [[ $1 == "-p" ]]; then 
+elif [[ $1 == "-p" ]]; then
     echo " -- processing source landsat gzip files"
     for zip in `ls -1 *.gz`; do
-        gunzip -q -c $zip | tar xvf -;
+        tar zxf $zip;
         if [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LT8" ]]; then # for Landsat 8, the wetness calculation is 6<4
-          echo " -- Landsat 8 imagery detected.";
+          echo " -- Landsat 8 imagery detected";
           tifs=`ls -1 *.TIF | grep -E "B4|B6"`;
-          echo -n " -- processing: ";
+          rm -rf mask.tif
+          echo -n " -- generating consistent mask: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B "$2" --outfile=mask.tif --calc=\"((B*A)>0)\"" }' | /bin/bash
+          echo -n " -- masking first band: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B mask.tif --outfile=masked.tif --calc=\"(B*A)\""}' | /bin/bash
+              echo $tifs | awk '{ print "mv masked.tif " $1 }' | /bin/bash
+          echo -n " -- masking second band: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$2" -B mask.tif --outfile=masked.tif --calc=\"(B*A)\""}' | /bin/bash
+              echo $tifs | awk '{ print "mv masked.tif " $2 }' | /bin/bash
+          echo -n " -- calculating wetness surface: ";
           echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
         elif [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LE7" ]]; then # for Landsat 7, the wetness calculation is 5<3
-          echo " -- Landsat 7 imagery detected.";
+          echo " -- Landsat 7 imagery detected";
           tifs=`ls -1 *.TIF | grep -E "B3|B5"`;
-          echo -n " -- processing: ";
+          rm -rf mask.tif
+          echo -n " -- generating consistent mask: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B "$2" --outfile=mask.tif --calc=\"((B*A)>0)\"" }' | /bin/bash
+          echo -n " -- masking first band: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B mask.tif --outfile=masked.tif --calc=\"(B*A)\""}' | /bin/bash
+              echo $tifs | awk '{ print "mv masked.tif " $1 }' | /bin/bash
+          echo -n " -- masking second band: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$2" -B mask.tif --outfile=masked.tif --calc=\"(B*A)\""}' | /bin/bash
+              echo $tifs | awk '{ print "mv masked.tif " $2 }' | /bin/bash
+          echo -n " -- calculating wetness surface: ";
           echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash;
         elif [[ `ls -1 *.TIF | grep -v "_OUTPUT" | head -n1 | awk '{ print substr($1,1,3) }'` == "LT5" ]]; then # for Landsat 5, the wetness calculation is 5<3
-          echo " -- Landsat 5 imagery detected.";
+          echo " -- Landsat 5 imagery detected";
           tifs=`ls -1 *.TIF | grep -E "B3|B5"`;
-          echo -n " -- processing: ";
-          #rm -rf mask.tif
-          #echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B " $2 " --outfile=mask.tif" --calc=\"(B*A)>0\"" }' | /bin/bash
-          #echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B mask.tif --outfile="$1" --calc=\"(B*A)\"" }' | /bin/bash
-          #echo $tifs | awk '{ print "gdal_calc.py -A "$2" -B mask.tif --outfile="$2" --calc=\"(B*A)\"" }' | /bin/bash 
-          echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash
-        else 
+          rm -rf mask.tif
+          echo -n " -- generating consistent mask: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B "$2" --outfile=mask.tif --calc=\"((B*A)>0)\"" }' | /bin/bash
+          echo -n " -- masking first band: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$1" -B mask.tif --outfile=masked.tif --calc=\"(B*A)\""}' | /bin/bash
+              echo $tifs | awk '{ print "mv masked.tif " $1 }' | /bin/bash
+          echo -n " -- masking second band: ";
+            echo $tifs | awk '{ print "gdal_calc.py -A "$2" -B mask.tif --outfile=masked.tif --calc=\"(B*A)\""}' | /bin/bash
+              echo $tifs | awk '{ print "mv masked.tif " $2 }' | /bin/bash
+          echo -n " -- calculating wetness surface: ";
+            echo $tifs | awk '{ print "gdal_calc.py --NoDataValue=0 -A "$1" -B " $2 " --outfile=" substr($1,1,length($1)-6)"OUTPUT.TIF --calc=\"(B<A)\"" }' | /bin/bash
+        else
           echo " -- Unknown landsat imagery prefix. Quitting";
           exit;
         fi
@@ -57,9 +80,10 @@ elif [[ $1 == "-p" ]]; then
       path=`echo $paths | awk -v col=$i '{ print $col }'`
        row=`echo $rows | awk -v col=$i '{ print $col }'`
        # select by path and row from WRS shapefile
-       rm -rf /tmp/221224_ls_grid.*
-       ogr2ogr /tmp/221224_ls_grid.shp ~/PLJV/boundaries/landsat_grids/wrs1_asc_desc/wrs1_asc_desc.shp -sql "SELECT * FROM wrs1_asc_desc WHERE PATH = $path AND ROW = $row"
-       gdalwarp -q -cutline /tmp/221224_ls_grid.shp $r $r"_cut.tif"
+       grid_file=$RANDOM"_ls_grid.shp"
+       rm -rf /tmp/$grid_file
+       ogr2ogr /tmp/$grid_file ~/PLJV/boundaries/landsat_grids/wrs1_asc_desc/wrs1_asc_desc_rev_buffered.shp -sql "SELECT * FROM wrs1_asc_desc_rev_buffered WHERE PATH = $path AND ROW = $row"
+       gdalwarp -q -cutline /tmp/$grid_file $r $r"_cut.tif"
        mv $r"_cut.tif" $r
        echo -n "."
     done; echo " ";
@@ -73,7 +97,7 @@ elif [[ $1 == "-c" ]]; then
         ogr2ogr $dst tmp_shp.shp -sql "SELECT * FROM tmp_shp WHERE DN = 1"
         #ogr2ogr $dst "tmp_shp.shp" -sql "SELECT * FROM tmp_shp WHERE ((OGR_GEOM_AREA)/1000) <= 1000" # surface area is less than ~10km2
         rm -rf tmp_shp.*
-      else 
+      else
         echo " -- skipping : " $dst
       fi
     done
