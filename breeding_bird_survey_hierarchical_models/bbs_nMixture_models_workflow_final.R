@@ -335,6 +335,7 @@ m_lbcu<- function(x,type="normalized"){
   x <- rowSums(sweep(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')], MARGIN=2,as.numeric(c(2.81e-03,-4.58e-03,3.21e-04,6.46e-05,3.31e-03,-4.07e-04)),`*`))
     x <- as.vector(x+7.36e-02) # intercept
       x[x<0] <- 0 # don't return irrational counts
+        x*(rowSums(x[,grepl(names(x),pattern="Ar")]) > 0) # fix: ensure we actually have exploitable habitat for the species at this location
     # normalize to regional counts?
     if(grepl(tolower(type),pattern="normal")){
       x <- x/mean(x) # normalize to the mean count
