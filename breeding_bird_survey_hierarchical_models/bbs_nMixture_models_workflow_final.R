@@ -302,7 +302,7 @@ cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
 ratioCU_to_BBS_Route <- (4.253/((3.1415926*(39.4289/50/2)^2)*50))
 
 m_buow <- function(x,type="normalized"){
-  x <- rowSums(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')]*as.numeric(c(0.000717,0.001151,0.001088,0.001379,-0.000491,-0.004840))
+  x <- rowSums(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')]*as.numeric(c(0.000717,0.001151,0.001088,0.001379,-0.000491,-0.004840)))
     x <- as.vector(x+1.997769) # intercept
       x[x<0] <- 0 # don't return irrational counts
     # normalize to regional counts?
