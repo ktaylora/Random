@@ -302,9 +302,11 @@ cat(" -- pseudo-rsquared:",1-(model_sse/null_sse),"\n")
 ratioCU_to_BBS_Route <- (4.253/((3.1415926*(39.4289/50/2)^2)*50))
 
 m_buow <- function(x,type="normalized"){
+  fillNA <- as.numeric(rowSums(x[,grepl(names(x),pattern="Ar")]) > 0) # fix: ensure we actually have exploitable habitat for the species at this location
   x <- rowSums(sweep(x[,c('gr_tAr','gr_patAr','ag_tAr','sh_tAr','is_1650','is_30km')],MARGIN=2,as.numeric(c(0.000717,0.001151,0.001088,0.001379,-0.000491,-0.004840)),`*`))
     x <- as.vector(x+1.997769) # intercept
       x[x<0] <- 0 # don't return irrational counts
+        x <- x*fillNA
     # normalize to regional counts?
     if(grepl(tolower(type),pattern="normal")){
       x <- x/mean(x) # normalize to the mean count
