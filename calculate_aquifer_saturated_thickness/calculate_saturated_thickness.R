@@ -6,9 +6,13 @@
 # vague.
 #
 
-# processFocalYear() : nested for parallel::parLapply
+
+
+#
+# WORKFLOW : PARSE RAW AQUIFER WELL DATA AND INTERPOLATE / PROCESS A FIXED RASTER FOR THE HIGH PLAINS AQUIFER
+#
+
 processFocalYear <- function(x,write=F){
-  # LOCAL INCLUDES
   require(spatstat)
   require(raster)
   require(rgdal)
@@ -22,7 +26,7 @@ processFocalYear <- function(x,write=F){
          f[f>=9999] <- NA
     return(f)
   }
-  # multiplyExtent()
+
   multiplyExtent <- function(x,extentMultiplier=1.1){
     e <- extent(x)
 
@@ -35,12 +39,12 @@ processFocalYear <- function(x,write=F){
 
     return(e)
   }
-  # as.owin()
+
   as.owin <- function(x,extentMultiplier=1.1){
     e <- multiplyExtent(x,extentMultiplier=extentMultiplier)
     return(owin(xrange=c(e@xmin,e@xmax), yrange=c(e@ymin,e@ymax)))
   }
-  # spatialPointsToPPP()
+
   spatialPointsToPPP <- function(x,extentMultiplier=1.1,field=NULL){
     # attribute 'data' to 'marks' for our PPP
     if(grepl(class(x),pattern="SpatialPoints")){
@@ -58,7 +62,7 @@ processFocalYear <- function(x,write=F){
     }
     return(x)
   }
-  # calcSaturatedThickness()
+
   calcSaturatedThickness <- function(x){
     # censor non-sense values
     if(sum(x$lev_va_ft<0,na.rm=T)>1){ x$lev_va_ft[x$lev_va_ft<0] <- 0; warning("censored non-sense depth to water observations.") }
@@ -69,7 +73,7 @@ processFocalYear <- function(x,write=F){
 
     return(x[!is.na(x$saturated_thickness),])
   }
-  # spatialPts()
+
   spatialPts <- function(x,usingPPP=F){
     pts <- SpatialPointsDataFrame(coords=data.frame(x=x$long_dd_NAD83,y=x$lat_dd_NAD83),data=x[,grepl(names(x),pattern="lev|depth|saturated")])
       projection(pts) <- projection("+init=epsg:4269")
@@ -80,10 +84,6 @@ processFocalYear <- function(x,write=F){
       return(spatialPointsToPPP(pts))
     }
   }
-
-  #
-  # WORKFLOW : PARSE RAW AQUIFER WELL DATA AND INTERPOLATE / PROCESS A FIXED RASTER FOR THE HIGH PLAINS AQUIFER
-  #
 
   focalYear <- gsub(unlist(strsplit(x,split="_"))[3],pattern="[.]zip",replacement="")
   if(file.exists(paste("saturated_thickness.",focalYear,".tif",sep=""))){ cat(" -- found existing raster for year in CWD.  Quitting.\n"); return(FALSE) }
@@ -101,6 +101,11 @@ processFocalYear <- function(x,write=F){
   cat(" -- calculating inverse-distance surface\n")
   i <- raster(idw(p,at="pixels", eps=(500/111319.9),dimyx=c(rasterTemplate@nrows,rasterTemplate@ncols),xy=list(x=coords[,1],y=coords[,2])))
    projection(i) <- projection(rasterTemplate)
+   
+  # Area-weighting step, similar to V.L. McGuire (2013). 
+  # Should validate this approach again Thiessen polygonization using cross-validation to see which approach works better.
+  cat(" -- smothing with a 50x50 moving window\n")
+  i <- focal(i, w=matrix(1, 51, 51), mean) 
 
   cat(" -- cropping/masking\n")
   b <- spTransform(readOGR("ds543/","hp_bound2010"),CRS(projection("+init=epsg:4269")))
@@ -112,11 +117,8 @@ processFocalYear <- function(x,write=F){
   }
 }
 
-#
-# MAIN
-#
-
 require(parallel)
-cl <- makeCluster(6)
+cl <- makeCluster(8)
 dataZips <- list.files(pattern="zip$")
 parLapply(cl,as.list(dataZips),fun=processFocalYear,write=T)
+
