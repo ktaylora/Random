@@ -43,9 +43,11 @@ else:
     s = ShapeFiles(os.listdir(sys.argv[1]))
 
 print "-- processing workflow"
+
 for shape in s.shapes:
     # inPointElevations=TopoPointElevation([s, 'strtd_t'])
     inPointElevations = '%s strtd_t POINTELEVATION; %s ELEV CONTOUR' % (shape, base_contours)
     print inPointElevations
     r = d + "\\" + shape[0:4] + ".tif"
     o = arcpy.TopoToRaster_3d(inPointElevations, r)
+    # crop and mask to the extent of the High Plains region shapefile.
