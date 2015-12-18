@@ -1,7 +1,7 @@
-#
-# Quick-and-dirty conversion of point shapefiles to topogrid using arcpy
-# Author: Kyle Taylor (kyle.taylor@pljv.org)
-#
+"""
+Quick-and-dirty conversion of point shapefiles to topogrid using arcpy
+Author: Kyle Taylor (kyle.taylor@pljv.org)
+"""
 
 import sys, os
 import arcpy
