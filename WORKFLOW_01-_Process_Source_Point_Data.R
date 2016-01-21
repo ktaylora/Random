@@ -10,6 +10,16 @@ Mode <- function(x,na.rm=T){
   ux <- unique(x)
   ux[which.max(tabulate(match(x,ux)))]
 }
+# Solve for k using Moors' Kurtosis
+mKurtosis <- function(x,na.rm=T){
+  if(na.rm) x <- na.omit(x);
+    z <- (x-mean(x))/sd(x)
+      var(z^2)+1
+}
+
+#
+# MAIN
+#
 
 # Set our Project Directory
 setwd("~/Downloads")
@@ -25,17 +35,21 @@ cat(" -- calculating a standard UNIX time variable to inform our hierarchical cl
 lek_pts$uTime <- as.numeric(as.POSIXct(lek_pts$observatio))
 cat(" -- rasterizing to merge overlapping points at 30m resolution, then convert back to a points shapefile\n")
 lek_pts_r <- raster(lek_pts,res=c(30,30),crs=CRS(projection(lek_pts)))
-  lek_pts_r <- rasterize(lek_pts,field=c('POINT_X','POINT_Y','Year','uTime'),fun=median,y=lek_pts_r)
+  lek_pts_r <- rasterize(lek_pts,field=c('POINT_X','POINT_Y','Year','uTime','Count_'),fun=median,y=lek_pts_r)
     lek_pts <- rasterToPoints(lek_pts_r,spatial=T)
-cat(" -- calculating cluster densities (knn=1,5)\n")
+      names(lek_pts) <- c('POINT_X','POINT_Y','year','uTime','count')
+cat(" -- calculating cluster densities from spatial data (knn=1,5) and Moors' Kurtosis\n")
 lek_pts$knn1 <- rowMeans(get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=1)$nn.dist)
 lek_pts$knn5 <- rowMeans(get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=5)$nn.dist)
+# Moors' Kurtosis
+f <- get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=30)$nn.dist
+  lek_pts$mKurt30 <- apply(f,1,mKurtosis); rm(f)
 cat(" -- calculating a distance metric that we can believe in using X/Y and our time metric (in seconds)\n")
-lek_dist_metric <- dist(lek_pts@data[,c('POINT_X','POINT_Y','knn1','knn5')],method='manhattan')
+lek_dist_metric <- dist(lek_pts@data[,c('POINT_X','POINT_Y','knn1','knn5','mKurt30')],method='manhattan')
 cat(" -- building our hierarchical cluster and cut our cluster trees (using rule of thumb for k)\n")
 lek_pts$cMemb_hk <- cutree(hclust(lek_dist_metric,method='centroid'), k=round(nrow(lek_pts)/2))
 cat(" -- building our k-means cluster (using rule of thumb for k)\n")
-lek_pts$cMemb_km <- kmeans(lek_pts@data[,c('POINT_X','POINT_Y','knn1','knn5')],centers=round(nrow(lek_pts@data)/2),nstart=50,iter=500,trace=F)$cluster
+lek_pts$cMemb_km <- kmeans(lek_pts@data[,c('POINT_X','POINT_Y','knn1','knn5','mKurt30')],centers=round(nrow(lek_pts@data)/2),nstart=50,iter=500,trace=F)$cluster
 
 # evaluation
 # for(i in 1:500){ plot(lek_pts[lek_pts$cMemb_hk == i,],pch=15, main=paste("cluster",i)); scalebar(type="bar",lwd=4); Sys.sleep(1.5); }
