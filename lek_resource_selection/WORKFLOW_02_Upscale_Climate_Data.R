@@ -64,18 +64,24 @@ cl <- parallel::makeCluster(4) # use 4 CPU cores
 
 # by default, let's assume the user passed us a directory path at runtime
 argv <- commandArgs(trailingOnly=T)
-path <- if(file.exists(argv),argv,".")
+path <- ifelse(file.exists(argv),argv,".")
 
 # read-in our source raster data from a directory path provided by the user
-elevation  <- raster(paste(path,"elevation.tif",sep="//"))
+elevation  <- raster(paste(path,"elevation.img",sep="/"))
 cliRasters <- ifelse(file.exists(path), path, file.choose())
-  cliRasters <- parLapply(as.list(c("mat_tenths","map","ffp")),FUN=fetchClimateData, dest=cliRasters)
+  cliRasters <- parLapply(cl,as.list(c("mat_tenths","map","ffp")),fun=fetchClimateData, dest=cliRasters)
+if(projection(elevation) != projection(cliRasters[[1]])){
+  cat(" -- reprojecting elevation DEM to the CRS of our climate data\n")
+  elevation <- projectRaster(elevation,cliRasters[[1]]) # note: projectRaster will use our cl object by default -- no need to code a special wrapper function for it.
+    writeRaster(elevation,paste(path,"elevation.img",sep="/"),overwrite=T)
+}
 
 # crop our rasters to the extent of the study area
 studyAreaExtent <- readOGR(path,"Study_area",verbose=F)
-  studyAreaExtent <- spTransform(studyAreaExtent,CRS(projection(elevation))) # re-project our shapefile to the CRS of our elevation DEM
+  studyAreaExtent <- spTransform(studyAreaExtent,CRS(projection(cliRasters[[1]]))) # re-project our shapefile to the CRS of our elevation DEM
 
-cliRasters <- lapply(cliRasters,FUN=crop,studyAreaExtent)
+cat(" -- cropping our climate rasters to the extent of our study region\n")
+cliRasters <- parLapply(cl,cliRasters,fun=crop,studyAreaExtent)
 
 # perform a bi-linear interpolation of our climate rasters so they are a consistent resolution with our elevation DEM
 
