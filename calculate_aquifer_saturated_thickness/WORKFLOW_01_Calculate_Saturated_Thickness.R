@@ -7,7 +7,17 @@
 # Future Kyle, if you happen across this and need to edit it -- I am sorry.
 
 #
-# WORKFLOW : PARSE RAW AQUIFER WELL DATA AND INTERPOLATE / PROCESS A FIXED RASTER FOR THE HIGH PLAINS AQUIFER
+# LOCAL INCLUDES
+#
+require(parallel)
+
+#
+# LOCAL FUNCTIONS
+#
+
+#
+# processFocalYear()
+# Parse raw USGS aquifer well data into a shapefile that we can hand-off to ArcGIS. 
 #
 
 processFocalYear <- function(x,write=F){
@@ -15,12 +25,13 @@ processFocalYear <- function(x,write=F){
   require(raster)
   require(rgdal)
   require(utils)
+  
   # LOCAL FUNCTIONS
   unpackZip <- function(x){
     f <- utils::unzip(x,list=T)[,1];
       utils::unzip(x);
     f <-read.csv(f,sep="\t",comment.char="#",stringsAsFactors=FALSE)
-      f[f<=-999] <- NA
+      f[f<=-999] <- NA # looming NA values in the source CSV have inconsistently large values. Treat as NA's
          f[f>=9999] <- NA
     return(f)
   }
@@ -157,7 +168,10 @@ processFocalYear <- function(x,write=F){
   #}
 }
 
-require(parallel)
+#
+# MAIN WORKFLOW
+#
+
 cl <- makeCluster(8)
 dataZips <- list.files(pattern="zip$")
   dataZips <- dataZips[grepl(dataZips,pattern="WL_ALL")]
