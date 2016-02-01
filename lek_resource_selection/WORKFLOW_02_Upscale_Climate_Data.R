@@ -83,7 +83,8 @@ studyAreaExtent <- readOGR(path,"Study_area",verbose=F)
 cat(" -- cropping our climate rasters to the extent of our study region\n")
 cliRasters <- parLapply(cl,cliRasters,fun=crop,studyAreaExtent)
 
-# perform a bi-linear interpolation of our climate rasters so they are a consistent resolution with our elevation DEM
+# perform a bilinear interpolation of our climate rasters so they are a consistent resolution with our elevation DEM
+cliRasters <- parLapply(cl,cliRasters,fun=raster::resample,y=elevation,method='bilinear')
 
 # generate a large sample of random points across the extent of our study area
 
