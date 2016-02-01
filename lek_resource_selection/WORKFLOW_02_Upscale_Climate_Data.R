@@ -80,18 +80,37 @@ if(projection(elevation) != projection(cliRasters[[1]])){
 studyAreaExtent <- readOGR(path,"Study_area",verbose=F)
   studyAreaExtent <- spTransform(studyAreaExtent,CRS(projection(cliRasters[[1]]))) # re-project our shapefile to the CRS of our elevation DEM
 
-cat(" -- cropping our climate rasters to the extent of our study region\n")
+cat(" -- cropping and trimming our climate rasters to the extent of our study region\n")
 cliRasters <- parLapply(cl,cliRasters,fun=crop,studyAreaExtent)
 
-# perform a bilinear interpolation of our climate rasters so they are a consistent resolution with our elevation DEM
+cat(" -- performing a bilinear interpolation on source climate data so they are spatially consistent with our DEM\n")
 cliRasters <- parLapply(cl,cliRasters,fun=raster::resample,y=elevation,method='bilinear')
+cat(" -- generating random point samples for GLM training data across elevation and climate variable surfaces\n")
+cliRasterSamplePts <- parLapply(cl,cliRasters,fun=raster::sampleRandom,size=ncell(cliRasters[[1]])*0.00010,sp=TRUE,ext=extent(studyAreaExtent)*0.95) # grab a %0.01.5 random sample of points from our grid, returning as SpatialPoints*
 
-# generate a large sample of random points across the extent of our study area
+# extract point values of elevation and interpolated climate data from our climate rasters and
+# overfit a GLM of climate ~ f(elevation) for the current landscape (one for each climate variable)
+# note: this operation doesn't fit well into the built-in 'R' apply methods... doing it the ugly way with for() loops
 
-# extract point values of elevation and interpolated climate data from our climate rasters
+elevSamplePts <- list();
+ trainingData <- list();
+       models <- list();
 
-# overfit GLMs of climate ~ f(elevation) for the current landscape (one for each climate variable)
+cat(" -- fitting regression models:\n")
+
+for(i in 1:length(cliRasterSamplePts)){
+  elevSamplePts[[length(elevSamplePts)+1]] <- raster::extract(y=cliRasterSamplePts[[i]],x=elevation,df=T)
+  trainingData[[length(trainingData)+1]] <- cbind(cliRasterSamplePts[[i]]@data,elevSamplePts[[i]])
+    trainingData[[i]] <- trainingData[[i]][,names(trainingData[[i]])!="ID"]
+  # fit a simple linear regression and report the fit to our user
+  models[[length(models)+1]] <- lm(formula(paste(names(trainingData[[i]]),collapse="~")), data=trainingData[[i]])
+  cat(paste("      -- formula: ",paste(names(trainingData[[i]]),collapse="~"),"\n",sep=""))
+  cat(paste("        -- r-squared: ",summary(models[[i]])$r.squared,"\n",sep=""))
+}
 
 # project our overfit models across the extent of the current landscape
-
+cat(" -- projecting models across current landscape DEM:\n")
+fitSurfaces <- parLapply(cl,fun=raster::predict,X=models,object=elevation)
 # save our output rasters
+cat(" -- writing fit raster surfaces to disk:\n")
+mapply(fitSurfaces,FUN=writeRaster,filename=as.list(paste(names(stack(cliRasters)),".upsampled.tif",sep="")),overwrite=T)
