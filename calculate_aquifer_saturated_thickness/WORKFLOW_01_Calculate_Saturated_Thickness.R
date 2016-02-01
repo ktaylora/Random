@@ -1,12 +1,10 @@
 #
-# Author: Kyle Taylor (kyle.taylor@pljv.org)
+# Author: Kyle Taylor (kyle.taylor@pljv.org) [2015]
 # Find source data at: http://ne.water.usgs.gov/ogw/hpwlms/data.html
 #
 # Assuming +init=epsg:4269 for CRS.  No meta data available and "NAD83" with unit degrees is
-# vague.
-#
-
-
+# vague.  In the first build, I designed a really hideous function-of-functions (observed below) to ease parallelization.
+# Future Kyle, if you happen across this and need to edit it -- I am sorry.
 
 #
 # WORKFLOW : PARSE RAW AQUIFER WELL DATA AND INTERPOLATE / PROCESS A FIXED RASTER FOR THE HIGH PLAINS AQUIFER
