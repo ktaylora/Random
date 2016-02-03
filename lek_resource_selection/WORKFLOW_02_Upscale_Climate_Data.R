@@ -70,10 +70,6 @@ path <- ifelse(file.exists(argv),argv,".")
 elevation  <- raster(paste(path,"elevation.img",sep="/"))
 cliRasters <- ifelse(file.exists(path), path, file.choose())
   cliRasters <- parLapply(cl,as.list(c("mat_tenths","map","ffp")),fun=fetchClimateData, dest=cliRasters)
-if(projection(elevation) != projection(cliRasters[[1]])){
-  cat(" -- reprojecting climate rasters to the CRS of our elevation DEM\n")
-    cliRasters <- parLapply(cl,cliRasters,fun=projectRaster,crs=CRS(projection(elevation)))
-}
 
 # crop our rasters to the extent of the study area
 studyAreaExtent <- readOGR(path,"Study_area",verbose=F)
@@ -81,6 +77,11 @@ studyAreaExtent <- readOGR(path,"Study_area",verbose=F)
 
 cat(" -- cropping and trimming our climate rasters to the extent of our study region\n")
 cliRasters <- parLapply(cl,cliRasters,fun=crop,studyAreaExtent)
+
+if(projection(elevation) != projection(cliRasters[[1]])){
+  cat(" -- reprojecting climate rasters to the CRS of our elevation DEM\n")
+    cliRasters <- parLapply(cl,cliRasters,fun=projectRaster,crs=CRS(projection(elevation)))
+}
 
 cat(" -- performing a bilinear interpolation on source climate data so they are spatially consistent with our DEM\n")
 cliRasters <- parLapply(cl,cliRasters,fun=raster::resample,y=elevation,method='bilinear')
