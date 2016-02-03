@@ -71,9 +71,8 @@ elevation  <- raster(paste(path,"elevation.img",sep="/"))
 cliRasters <- ifelse(file.exists(path), path, file.choose())
   cliRasters <- parLapply(cl,as.list(c("mat_tenths","map","ffp")),fun=fetchClimateData, dest=cliRasters)
 if(projection(elevation) != projection(cliRasters[[1]])){
-  cat(" -- reprojecting elevation DEM to the CRS of our climate data\n")
-  elevation <- projectRaster(elevation,crs=CRS(projection(cliRasters[[1]]))) # note: projectRaster will use our cl object by default -- no need to code a special wrapper function for it.
-    writeRaster(elevation,paste(path,"elevation.img",sep="/"),overwrite=T)
+  cat(" -- reprojecting climate rasters to the CRS of our elevation DEM\n")
+    cliRasters <- parLapply(cl,cliRasters,fun=projectRaster,crs=CRS(projection(elevation)))
 }
 
 # crop our rasters to the extent of the study area
