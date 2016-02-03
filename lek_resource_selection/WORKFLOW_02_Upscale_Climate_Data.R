@@ -72,7 +72,7 @@ cliRasters <- ifelse(file.exists(path), path, file.choose())
   cliRasters <- parLapply(cl,as.list(c("mat_tenths","map","ffp")),fun=fetchClimateData, dest=cliRasters)
 if(projection(elevation) != projection(cliRasters[[1]])){
   cat(" -- reprojecting elevation DEM to the CRS of our climate data\n")
-  elevation <- projectRaster(elevation,cliRasters[[1]]) # note: projectRaster will use our cl object by default -- no need to code a special wrapper function for it.
+  elevation <- projectRaster(elevation,crs=CRS(projection(cliRasters[[1]]))) # note: projectRaster will use our cl object by default -- no need to code a special wrapper function for it.
     writeRaster(elevation,paste(path,"elevation.img",sep="/"),overwrite=T)
 }
 
