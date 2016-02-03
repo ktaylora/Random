@@ -86,7 +86,7 @@ if(projection(elevation) != projection(cliRasters[[1]])){
 cat(" -- performing a bilinear interpolation on source climate data so they are spatially consistent with our DEM\n")
 cliRasters <- parLapply(cl,cliRasters,fun=raster::resample,y=elevation,method='bilinear')
 cat(" -- generating random point samples for GLM training data across elevation and climate variable surfaces\n")
-cliRasterSamplePts <- parLapply(cl,cliRasters,fun=raster::sampleRandom,size=ncell(cliRasters[[1]])*0.00010,sp=TRUE,ext=extent(studyAreaExtent)*0.95) # grab a %0.01.5 random sample of points from our grid, returning as SpatialPoints*
+cliRasterSamplePts <- parLapply(cl,cliRasters,fun=raster::sampleRandom,size=ncell(cliRasters[[1]])*0.00010,sp=TRUE,ext=extent(spTransform(studyAreaExtent,CRS(projection(cliRasters[[1]]))))*0.95) # grab a %0.01.5 random sample of points from our grid, returning as SpatialPoints*
 
 # extract point values of elevation and interpolated climate data from our climate rasters and
 # overfit a GLM of climate ~ f(elevation) for the current landscape (one for each climate variable)
