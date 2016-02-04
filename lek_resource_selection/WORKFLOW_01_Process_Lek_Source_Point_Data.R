@@ -44,6 +44,7 @@ lek_pts_r <- raster(lek_pts,res=c(30,30),crs=CRS(projection(lek_pts)))
   lek_pts_r <- rasterize(lek_pts,field=c('SFs_sfid','POINT_X','POINT_Y','Year','uTime','Count_'),fun=median,y=lek_pts_r)
     lek_pts <- rasterToPoints(lek_pts_r,spatial=T)
       names(lek_pts) <- c('SFs_sfid','POINT_X','POINT_Y','year','uTime','count')
+        lek_pts$SFs_sfid <- round(lek_pts$SFs_sfid)
 
 cat(" -- calculating cluster densities from spatial data (knn=1,5) and Moors' Kurtosis\n")
 lek_pts$knn1 <- rowMeans(get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=1)$nn.dist)
