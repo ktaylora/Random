@@ -31,7 +31,6 @@ lek_pts <- readOGR("/tmp/lek_pts/","All_LekPoints_NotTemporal",verbose=F)
   lek_pts <- lek_pts[lek_pts$Year > 2002,]
 # christian's active vs not-active rules
 keep <- unique(lek_pts[lek_pts$Year == 2011 & lek_pts$Count_ > 0,]$SFs_sfid) # we had at least one chicken observed last year?
-lek_pts <- 
 
 # overlapping points?
 lek_pts$overlaps <- sqrt(lek_pts$SFs_sfid*lek_pts$POINT_X*lek_pts$POINT_Y)
@@ -45,9 +44,11 @@ lek_pts_r <- raster(lek_pts,res=c(30,30),crs=CRS(projection(lek_pts)))
   lek_pts_r <- rasterize(lek_pts,field=c('POINT_X','POINT_Y','Year','uTime','Count_'),fun=median,y=lek_pts_r)
     lek_pts <- rasterToPoints(lek_pts_r,spatial=T)
       names(lek_pts) <- c('POINT_X','POINT_Y','year','uTime','count')
+
 cat(" -- calculating cluster densities from spatial data (knn=1,5) and Moors' Kurtosis\n")
 lek_pts$knn1 <- rowMeans(get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=1)$nn.dist)
 lek_pts$knn5 <- rowMeans(get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=5)$nn.dist)
+
 # Moors' Kurtosis
 f <- get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=30)$nn.dist
   lek_pts$mKurt30 <- apply(f,1,mKurtosis); rm(f)
