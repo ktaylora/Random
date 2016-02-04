@@ -41,9 +41,9 @@ cat(" -- calculating a standard UNIX time variable to inform our hierarchical cl
 lek_pts$uTime <- as.numeric(as.POSIXct(lek_pts$observatio))
 cat(" -- rasterizing to merge overlapping points at 30m resolution, then convert back to a points shapefile\n")
 lek_pts_r <- raster(lek_pts,res=c(30,30),crs=CRS(projection(lek_pts)))
-  lek_pts_r <- rasterize(lek_pts,field=c('POINT_X','POINT_Y','Year','uTime','Count_'),fun=median,y=lek_pts_r)
+  lek_pts_r <- rasterize(lek_pts,field=c('SFs_sfid','POINT_X','POINT_Y','Year','uTime','Count_'),fun=median,y=lek_pts_r)
     lek_pts <- rasterToPoints(lek_pts_r,spatial=T)
-      names(lek_pts) <- c('POINT_X','POINT_Y','year','uTime','count')
+      names(lek_pts) <- c('SFs_sfid','POINT_X','POINT_Y','year','uTime','count')
 
 cat(" -- calculating cluster densities from spatial data (knn=1,5) and Moors' Kurtosis\n")
 lek_pts$knn1 <- rowMeans(get.knn(lek_pts@data[,c('POINT_X','POINT_Y')],k=1)$nn.dist)
