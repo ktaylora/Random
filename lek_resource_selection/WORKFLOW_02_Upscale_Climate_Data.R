@@ -101,9 +101,9 @@ cat(" -- fitting regression models:\n")
 for(i in 1:length(cliRasterSamplePts)){
   elevSamplePts[[length(elevSamplePts)+1]] <- raster::extract(y=cliRasterSamplePts[[i]],x=elevation,df=T)
   trainingData[[length(trainingData)+1]] <- cbind(cliRasterSamplePts[[i]]@data,elevSamplePts[[i]])
-    trainingData[[i]] <- trainingData[[i]][,names(trainingData[[i]])!="ID"]
+    trainingData[[i]] <- trainingData[[i]][,names(trainingData[[i]])!="ID"] # strip out a looming "ID" field from our explanatory data
   # fit a simple linear regression and report the fit to our user
-  models[[length(models)+1]] <- lm(formula(paste(names(trainingData[[i]]),collapse="~")), data=trainingData[[i]])
+  models[[length(models)+1]] <- lm(formula(paste(names(trainingData[[i]]),collapse="~")), data=trainingData[[i]]) # model formula : climate variable ~ f(elevation)
   cat(paste("      -- formula: ",paste(names(trainingData[[i]]),collapse="~"),"\n",sep=""))
   cat(paste("        -- r-squared: ",summary(models[[i]])$r.squared,"\n",sep=""))
 }
