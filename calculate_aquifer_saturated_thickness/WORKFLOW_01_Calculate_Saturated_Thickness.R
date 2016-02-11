@@ -9,23 +9,26 @@
 #
 # LOCAL INCLUDES
 #
-require(parallel)
+require(parallel)           # For parallization
+require(landscapeAnalysis)  # Kyle's handy package for various spatial things
 
 #
 # LOCAL FUNCTIONS
 #
 
 #
-# processFocalYear()
-# Parse raw USGS aquifer well data into a shapefile that we can hand-off to ArcGIS. 
-#
+# calcSaturatedThickness_byYear()
+# Parse raw USGS aquifer well data into a shapefile that we can hand-off to ArcGIS. This will generate spatial points
+# with saturated thickness indicated for each year.
 
-processFocalYear <- function(x,write=F){
+calcSaturatedThickness_byYear <- function(x,write=F){
+
   require(spatstat)
   require(raster)
   require(rgdal)
   require(utils)
-  
+  require(landscapeAnalysis)
+
   # LOCAL FUNCTIONS
   unpackZip <- function(x){
     f <- utils::unzip(x,list=T)[,1];
@@ -34,42 +37,6 @@ processFocalYear <- function(x,write=F){
       f[f<=-999] <- NA # looming NA values in the source CSV have inconsistently large values. Treat as NA's
          f[f>=9999] <- NA
     return(f)
-  }
-
-  multiplyExtent <- function(x,extentMultiplier=1.1){
-    e <- extent(x)
-
-    if(!is.null(extentMultiplier)) {
-      e@xmin <- e@xmin*extentMultiplier
-      e@xmax <- e@xmax+abs(e@xmax*(extentMultiplier-1))
-      e@ymin <- e@ymin-abs(e@ymin*(extentMultiplier-1))
-      e@ymax <- e@ymax*extentMultiplier
-    }
-
-    return(e)
-  }
-
-  as.owin <- function(x,extentMultiplier=1.1){
-    e <- multiplyExtent(x,extentMultiplier=extentMultiplier)
-    return(owin(xrange=c(e@xmin,e@xmax), yrange=c(e@ymin,e@ymax)))
-  }
-
-  spatialPointsToPPP <- function(x,extentMultiplier=1.1,field=NULL){
-    # attribute 'data' to 'marks' for our PPP
-    if(grepl(class(x),pattern="SpatialPoints")){
-      d <- x@data
-      c <- x@coords
-      if(grepl(class(x),pattern="SpatialPointsDataFrame")){
-        if(!is.null(field)){
-          x <- ppp(x=c[,1], y=c[,2], window=as.owin(x,extentMultiplier=extentMultiplier), marks=d[,field])
-        } else {
-          x <- ppp(x=c[,1], y=c[,2], window=as.owin(x,extentMultiplier=extentMultiplier), marks=d)
-        }
-      } else {
-        x <- ppp(x=c[,1], y=c[,2], window=as.owin(x,extentMultiplier=extentMultiplier))
-      }
-    }
-    return(x)
   }
 
   calcSaturatedThickness <- function(x){
@@ -102,8 +69,8 @@ processFocalYear <- function(x,write=F){
     require(raster)
     require(rgdal)
     cat(" -- extracting bedrock depths at well point locations\n")
-      s <- spatialPts(unpackZip("WL_ALL_2009.zip"))
-    sat <- raster("hp_satthk09")
+      s <- spatialPts(unpackZip("WL_ALL_2009.zip")) # use well data for 2009 for our calculation
+    sat <- raster("hp_satthk09") # Use the published saturated thickness (2009) product from V. McGuire to back-calculate bedrock depth for the region
 
     o <- extract(sat,s,df=T)[,2]
     o <- (o-(s$well_depth_ft-s$lev_va_ft))+s$well_depth_ft
@@ -128,44 +95,21 @@ processFocalYear <- function(x,write=F){
          writeRaster(i,"bedrock.tif")
   }
 
+  # unpack the zipfile passed by the user for the focal year
   focalYear <- gsub(unlist(strsplit(x,split="_"))[3],pattern="[.]zip",replacement="")
   if(file.exists(paste("saturated_thickness.",focalYear,".tif",sep=""))){ cat(" -- found existing raster for year in CWD.  Quitting.\n"); return(FALSE) }
-
   cat(" -- parsing zip data for:",focalYear,"\n")
   t <- unpackZip(x)
     t <- t[!is.na(t$long_dd_NAD83),]
       t <- t[!is.na(t$lat_dd_NAD83),]
+  # do a back-of-the-envelope calculation of bedrock depth using the published saturated thickness product from 2008 from V. McGuire
   cat(" -- extracting bedrock depth\n")
   if(!file.exists("bedrock.tif")){ interpolateBedrockDepth() }
   t$bedrock <- extract(raster("bedrock.tif"),spatialPts(t),df=T)[,2]
+  # calculate saturated thickness for our spatial points of well depth and write to disk
   t <- calcSaturatedThickness(t)
     t <- spatialPts(t)
       writeOGR(t,".",focalYear,driver="ESRI Shapefile",overwrite=T)
-
-  # EXPORT SHAPEFILES TO ARC
-  #p <- spatialPointsToPPP(t,extentMultiplier=1.05,field="saturated_thickness")
-
-  #cat(" -- building a raster template based on parsed point data\n")
-  #rasterTemplate <- raster(ext=multiplyExtent(t,extentMultiplier=1.05),crs=CRS(projection(t)),resolution=(500/111319.9))
-  #        coords <- xyFromCell(rasterTemplate,cell=1:ncell(rasterTemplate))
-
-  #cat(" -- calculating inverse-distance surface\n")
-  #i <- raster(idw(p,at="pixels", eps=(500/111319.9),dimyx=c(rasterTemplate@nrows,rasterTemplate@ncols),xy=list(x=coords[,1],y=coords[,2])))
-  # projection(i) <- projection(rasterTemplate)
-
-  # Area-weighting step, similar to V.L. McGuire (2013).
-  # Should validate this approach again Thiessen polygonization using cross-validation to see which approach works better.
-  #cat(" -- smothing with a 50x50 moving window\n")
-  #i <- focal(i, w=matrix(1, 51, 51), mean)
-
-  #cat(" -- cropping/masking\n")
-  #b <- spTransform(readOGR("ds543/","hp_bound2010"),CRS(projection("+init=epsg:4269")))
-  #  i <- mask(i,b)
-  #if(write){
-  #  writeRaster(i,paste("saturated_thickness.",focalYear,".tif",sep=""),overwrite=T)
-  #} else {
-  #  return(i)
-  #}
 }
 
 #
