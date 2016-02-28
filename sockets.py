@@ -10,12 +10,13 @@ import zlib
 from socket import error as socket_error
 
 
-class HandShake():
+class Handshake():
     def __init__(self, *args):
         """
         A roll-your-own implementation of handshaking loosely based on WebSockets.  HandShake is a parent class
         containing methods and attributes useful for negotiating common client/server tasks (e.g., file send/recv,
         searching, etc...).
+        :rtype: object
         """
         self.HOST = ''
         self.CONNECTION = ''
@@ -32,7 +33,7 @@ class ClientConnection(threading.Thread):
         :param args:
         :return:
         """
-        self.h = HandShake()
+        self.h = SGetClientHandshake()
         threading.Thread.__init__(self)
         try:
             self.socket = args[0]
@@ -44,7 +45,7 @@ class ClientConnection(threading.Thread):
     def run(self):
         """
         default run method provides a simple threaded echo server.  Default method should be overwritten by derived
-        child classes to provide more complex functionality
+        children to provide more complex functionality
         :return NULL:
         """
         while True:
@@ -63,7 +64,7 @@ class ServerConnection(threading.Thread):
         :param args:
         :return:
         """
-        self.h = HandShake()
+        self.h = Handshake()
         threading.Thread.__init__(self)
 
 
@@ -86,6 +87,7 @@ class CGetFile(ServerConnection):
         """
         ServerConnection.__init__(self, args[0])
 
+
 class SLocateFile(ClientConnection):
     def __init__(self, *args):
         """
@@ -106,6 +108,7 @@ class SAuthenticate(ClientConnection):
         """
         ClientConnection.__init__(self, args[0])
 
+
 class CAuthenticate(ServerConnection):
     def __init__(self, *args):
         """
@@ -114,6 +117,27 @@ class CAuthenticate(ServerConnection):
         :return:
         """
         ServerConnection.__init__(self, args[0])
+
+
+class SGetClientHandshake(ClientConnection, Handshake):
+    def __init__(self):
+        Handshake.__init__(self)
+        ClientConnection.__init__(self,args[0])
+
+    def run(self):
+        """
+        default run method provides a simple threaded echo server.  Default method should be overwritten by derived
+        child classes to provide more complex functionality
+        :return NULL:
+        """
+        while True:
+            try:
+                data = self.connection.recv(256)
+            except socket_error as sError:
+                raise sError
+            if data:
+                self.connection.send(data)
+
 
 class Server:
     def __init__(self, *args):
@@ -146,7 +170,7 @@ class Server:
             raise sError
         self.client_list = []
         while True:
-            self.client_list.append(ClientConnection(self.socket).start())
+            self.client_list.append(SGetClientHandshake(self.socket).start())
 
     def close(self):
         self.socket.close()
