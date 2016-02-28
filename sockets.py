@@ -10,7 +10,11 @@ import zlib
 from socket import error as socket_error
 
 class HandShake():
-    ''' todo : a roll-your-own implementation of handshaking loosely based on WebSockets '''
+    ''' 
+    A roll-your-own implementation of handshaking loosely based on WebSockets.  HandShake is a parent class 
+    containing methods and attributes useful for negotiating common client/server tasks (e.g., file send/recieve, 
+    searching, etc...).
+    '''
     def __init__(self,*kargs):
         self.HOST = ''
         self.CONNECTION = ''
