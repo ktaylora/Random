@@ -9,10 +9,15 @@ import zlib
 
 from socket import error as socket_error
 
-
 class HandShake():
+    ''' todo : a roll-your-own implementation of handshaking loosely based on WebSockets '''
     def __init__(self,*kargs):
-        print "hi"
+        self.HOST = ''
+        self.CONNECTION = ''
+        self.SEC_KEY = ''
+        self.SEC_PROTOCOL = ''
+        self.SEC_VERSION = ''
+        self.MESSAGE = ''
 
 class ClientConnection(threading.Thread):
     def __init__(self,*kargs):
