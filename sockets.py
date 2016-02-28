@@ -3,41 +3,82 @@ A simple interface for network handshaking and socket handling for client/server
 '''
 
 import socket
-import getpass
+import threading
+import errno
+import zlib
 
-class Keyfile:
-    def __init__(self):
+from socket import error as socket_error
 
-class Client:
-    def __init__(self):
+
+class HandShake():
+    def __init__(self,*kargs):
+        print "hi"
+
+class ClientConnection(threading.Thread):
+    def __init__(self,*kargs):
+        self.h = HandShake()
+        threading.Thread.__init__(self)
+        try:
+            self.socket = kargs[0]
+            self.connection, self.address = self.socket.accept()
+            print " -- client connect from", self.address[0]
+        except socket_error as sError:
+            raise sError
+    def echo(self):
+        while True:
+            try:
+                data = self.connection.recv(256)
+            except socket_error as sError:
+                raise sError
+            if data :
+                self.connection.send(data)
+    def run(self):
+        self.echo()
+
+class GetFile(ClientConnection):
+    def __init__(self,*kargs):
+        ClientConnection.__init__(self,kargs[0])
+    def handshake(self):
+        print "hi"
+
+class SendFile(ClientConnection):
+    def __init__(self,*kargs):
+        ClientConnection.__init__(self,kargs[0])
+    def handshake(self):
+        print "hi"
+
+class LocateFile(ClientConnection):
+    def __init__(self,*kargs):
+        ClientConnection.__init__(self,kargs[0])
+
+class Authenticate(ClientConnection):
+    def __init__(self,*kargs):
+        ClientConnection.__init__(self,kargs[0])
 
 class Server:
     def __init__(self,*kargs):
-        self.socket = socket.socket() # by default, we will assume IP4 SOCK_STREAM
-        self.clientConn = ""
-        self.address = ""
+        self.socket = socket.socket()
         if(len(kargs)>0):
             self.port = kargs[0]
             self.maxConnect = kargs[1] # sets the number of queued clients on our single-thread stack while we work with our active connection
         else:
             self.port = 65000
             self.maxConnect = 5
-
         try:
             self.socket.bind(('',self.port))  # bind to localhost on port N
-        except Exception as e:
-            print e
-
+        except socket_error as sError:
+            raise sError
     def listen(self):
-        self.socket.listen(self.maxConnect)
+        try:
+            self.socket.listen(self.maxConnect)
+        except socket_error as sError:
+            raise sError
+        self.client_list = []
         while True:
-            self.clientConn, self.address = self.socket.accept()
-            print " -- client connect from", self.address[0]
-            data = self.clientConn.recv(200)
-            if data:
-                print " -- input recv. from", self.address[0]
-                self.clientConn.send(data)
-            self.clientConn.close()
-
+            self.client_list.append(ClientConnection(self.socket).start())
     def close(self):
         self.socket.close()
+
+if __name__ == "__main__":
+    s=Server(12345,10)
+    s.listen()
