@@ -30,7 +30,6 @@ pts <- raster::sampleRandom(r[[1]],size=ncell(r[[1]])*0.35,sp=T,na.rm=T)
 
 trainingData <- data.frame(sat.thickness=extract(r[[1]],pts),
                            yr=as.numeric(substr(names(r[[1]]),2,5)),
-                           yr.sqrd=as.numeric(substr(names(r[[1]]),2,5))^2,
                            lat=pts@coords[,2],
                            lon=pts@coords[,1])
 
@@ -38,17 +37,36 @@ for(i in 2:length(r)){
   trainingData <- rbind(trainingData,
                         data.frame(sat.thickness=extract(r[[i]],pts),
                                    yr=as.numeric(substr(names(r[[i]]),2,5)),
-                                   yr.sqrd=as.numeric(substr(names(r[[i]]),2,5))^2,
                                    lat=pts@coords[,2],
                                    lon=pts@coords[,1])
 
                        )
 }
 
-cat(" -- fitting robust regression model\n")
-rl.model <- rlm(as.formula(paste(names(trainingData[1]), ".", sep=" ~ ")),scale.est="Huber", psi=psi.hampel, init="lts",data=trainingData)
+cat(" -- fitting robust regression model to randomized samples (for evaluating variable importance)\n")
+n <- names(trainingData)
+  rl.model <- rlm(as.formula(paste(names(trainingData[1]), "~I(", n[2], ")^2+I(",n[2],")+",n[3],"+",n[4],sep="")),scale.est="Huber", psi=psi.hampel, init="lts",data=trainingData)
+    print(summary(rl.model))
 
+cat(" -- fitting implicit, non-spatial regression to raster time-series")
+time <- 1:length(r);
 
+calcCoefficients <- function(y) { # stolen and modified from R. Hijmans -- Kyle
+    if(all(is.na(y))) {
+      c(NA, NA)
+    } else {
+      lm(y ~ time)$coefficients
+    }
+}
+
+r_coef <- calc(stack(r), calcCoefficients) # will return a stack as intercept[1],slope[2](time)
+
+# Residuals = observed - expected (masked against NAs)
+r_resid <- unlist(lapply(r,FUN=names))
+  r_resid <- round(median(as.numeric(substr(r_resid,2,5))))
+    r_resid <- (stackApply(stack(r),indices=1,fun=median)-(r_coef[[2]]*setValues(r[[1]],i)+r_coef[[1]]))*is.na(r[[1]])
 
 # write our output to disk
 writeRaster(satThick_10_14,"satThick_10_14.tif",overwrite=T)
+writeRaster(r_coef,paste(paste(range(as.numeric(substr(unlist(lapply(r,FUN=names)),2,5))),collapse="_"),"coef_time.tif",sep="_"),overwrite=T)
+writeRaster(r_resid,paste(paste(range(as.numeric(substr(unlist(lapply(r,FUN=names)),2,5))),collapse="_"),"resid_time.tif",sep="_"),overwrite=T)
