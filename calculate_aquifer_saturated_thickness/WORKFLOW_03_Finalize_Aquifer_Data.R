@@ -75,7 +75,7 @@ cat(" -- extrapolating to a novel time-period\n")
 target_year <- diff(range(as.numeric(substr(unlist(lapply(r,FUN=names)),2,5))))+max(as.numeric(substr(unlist(lapply(r,FUN=names)),2,5)))
 
 r_predicted <- (r_coef[[2]]*setValues(r[[1]],target_year)+r_coef[[1]])*!is.na(r[[1]])
-  #r_predicted[r_predicted<0] <- 0 # let's assume projected negative thickness is ~0
+  #r_predicted[r_predicted<0] <- 0 # Assuming any extrapolation less than 0 is equivalent to 0 looks like it contributes to heaping.  Let's play with something post-hoc here to interpret negative values. - Kyle
 
 # Write our output to disk
 cat(" -- writing rasters to disk\n")
