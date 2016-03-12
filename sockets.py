@@ -168,19 +168,20 @@ class Server:
             self.socket.listen(self.maxConnect)
         except socket_error as sError:
             raise sError
-        self.client_list = []
+
+        client_list = []
         while True:
-            self.client_list.append(SGetClientHandshake(self.socket).start())
+            client_list.append(SGetClientHandshake(self.socket).start())
 
     def close(self):
         self.socket.close()
 
 
-if __name__ == "_main__":
+if __name__ == "__main__":
     try:
         s = Server(12345, 10)
         s.listen()
     except KeyboardInterrupt as e:
         s.close()
     except Exception as e:
-        raise e
+        print e
