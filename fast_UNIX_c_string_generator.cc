@@ -1,3 +1,12 @@
+/*
+ * Some quick-and-dirty C code to generate arbitrary alphanumeric strings on Unix systems that
+ * leverages /dev/urandom for pseudo-random number generation.
+ *
+ * Author: Kyle Taylor (and random contributors to stack exchange)
+ * compile with: gcc -Wall test.cc
+ *
+ */
+
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
