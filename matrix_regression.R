@@ -3,6 +3,10 @@
 # Author: Kyle Taylor
 #
 
+# fake some data
+X <- matrix(c(rep(1,100),rnorm(100,1:100,7)),ncol=2)
+y <- rnorm(100,1:100,12)
+
 solve.regression <- function(b,x){ 
   sum <- rep(0,nrow(x))
   for(i in 1:ncol(x)){
