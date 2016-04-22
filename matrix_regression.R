@@ -16,7 +16,7 @@ solve.betas <- function(X,y){
 }
 
 solve.residuals <- function(b,x,y){
-  y-solve(b,x)
+  y-solve.regression(b,x)
 }
 
 np.bootstrap <- function(X,y,n=100,reportSE=T){
