@@ -4,13 +4,13 @@
 #
 
 # fake some data
-X <- matrix(c(rep(1,100),rnorm(100,1:100,7)),ncol=2)
-y <- rnorm(100,1:100,12)
+X <- matrix(c(rep(1,100),rnorm(100,1:100,7)),ncol=2) # design matrix
+y <- rnorm(100,1:100,12)                             # response data
 
-solve.regression <- function(b,x){ 
-  sum <- rep(0,nrow(x))
-  for(i in 1:ncol(x)){
-    sum <- sum + (b[i+1]*x[,i])
+solve.regression <- function(b,X){ 
+  sum <- rep(0,nrow(X))
+  for(i in 2:ncol(X)){
+    sum <- sum + (b[i]*X[,i])
   }
   return(sum+b[1])
 }
@@ -19,8 +19,8 @@ solve.betas <- function(X,y){
   as.vector(base::solve(t(X)%*%X)%*%(t(X)%*%y))
 }
 
-solve.residuals <- function(b,x,y){
-  y-solve.regression(b,x)
+solve.residuals <- function(b,X,y){
+  y-solve.regression(b,X)
 }
 
 np.bootstrap <- function(X,y,n=100,reportSE=T){
@@ -41,7 +41,7 @@ np.bootstrap <- function(X,y,n=100,reportSE=T){
   }
   if(reportSE){
     b <- vector()
-      for(i in 1:ncol(betas)) b <- append(b,sd(betas[,i])/sqrt(nrow(betas)-1))
+      for(i in 1:ncol(betas)) b <- append(b,sd(betas[,i])/sqrt(nrow(X)-1))
         return(b)
   } 
   return(betas)
@@ -62,3 +62,8 @@ r.squared <- function(X,y){
   L <- diag(nrow(X))-((rep(1,nrow(X))%*%t(rep(1,nrow(X))))/nrow(X))
   as.vector(1-((t(y)%*%(M%*%y))/(t(y)%*%(L%*%y))))
 }
+
+b<-solve.betas(X,y)
+bs <- np.bootstrap(X,y,n=5000)
+plot(y~X[,2])
+lines(solve.regression(b,matrix(c(rep(1,119),0:118),ncol=2)),col="red")
