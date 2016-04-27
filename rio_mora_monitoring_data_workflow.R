@@ -38,6 +38,8 @@ t_monitoring_data <- read.csv(
       t_locations <- read.csv(
                       "~/Incoming/rio_mora_ld/rio_mora_transect_locations.csv")
 
+      t_locations$Area <- toupper(gsub(as.vector(t_locations$Area),pattern=" ",replacement=""))
+
 s <- SpatialPointsDataFrame(
                     coords = data.frame(x = t_locations$x, y = t_locations$y),
                       data = data.frame(site = as.vector(t_locations$New.Name))
@@ -75,7 +77,7 @@ for (i in 1:length(date)){
 dev.new()
 barplot(table(t_monitoring_data$Season),
         ylab = "detections",
-        main = "seasonality of detections for priority species")
+        main = "seasonality of detections for all species")
 # report summary statistics for number of priority species detections
 cat(" -- number of priority species detected in monitoring data: ",
     length(
@@ -131,15 +133,15 @@ t_monitoring_data <- t_monitoring_data[
   ((toupper(as.vector(t_monitoring_data$X4.letter.code))))
   %in%
   priority_spp_four_letter_codes, ]
-# determine detections for each relevant species
+# determine detections and abundance for each relevant species at each site/year/season
 detections <- list();
 for (spp in unique(as.vector(t_monitoring_data$X4.letter.code))){
   focal <- t_monitoring_data[t_monitoring_data$X4.letter.code == spp,]
   for (y in unique(focal$Year)){
     year <- focal[focal$Year == y, ]
     if (nrow(year) > 0){
-      for (s in unique(year$Season)){
-        season <- year[year$Season == s, ]
+      for (S in unique(year$Season)){
+        season <- year[year$Season == S, ]
         if (nrow(season) > 0){
           for (l in unique(season$Array.Site)){
             site <- season[season$Array.Site == l, ]
@@ -157,13 +159,14 @@ for (spp in unique(as.vector(t_monitoring_data$X4.letter.code))){
               }
               # build a table for focal site
               detections[[length(detections)+1]] <-
-              data.frame(site = site$Array.Site[1],
+              data.frame(spp = as.vector(site$X4.letter.code),
+                         site = site$Array.Site[1],
                          date = site$Date[1],
                          year = site$Year[1],
                          season = site$Season[1],
                          wind_speed = site$Wind.Speed[1],
                          temp = mean(site$Temp),
-                         time = mean(site$Time),
+                         time = round(median(site$Time)),
                          abundance = sum(as.numeric(site$Number), na.rm = T),
                          distance = mean(as.numeric(distances)),
                          det_hist = paste(as.character(detection), collapse = "")
@@ -177,7 +180,11 @@ for (spp in unique(as.vector(t_monitoring_data$X4.letter.code))){
   }
 }
 
+# merge our tables with point coordinates for analysis with LANDFIRE
 detections <- do.call(rbind, detections) # make this into a table
+  detections$Area <- detections$site
+    detections <- merge(t_locations[, c("Area", "x", "y")], detections, by = "Area")
+      detections <- detections[,names(detections) != "Area"]
 
 # decompress our LANDFIRE data
 
