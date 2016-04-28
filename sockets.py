@@ -25,6 +25,15 @@ class Handshake():
         self.SEC_VERSION = ''
         self.MESSAGE = ''
 
+    def processHandshake(self):
+        known = False
+        if self.MESSAGE == "001":
+            known = True
+            print "hi"
+        elif self.MESSAGE == "002":
+            known = True
+            print "hi"
+
 
 class ClientConnection(threading.Thread):
     def __init__(self, *args):
@@ -33,7 +42,6 @@ class ClientConnection(threading.Thread):
         :param args:
         :return:
         """
-        self.h = SGetClientHandshake()
         threading.Thread.__init__(self)
         try:
             self.socket = args[0]
@@ -120,9 +128,9 @@ class CAuthenticate(ServerConnection):
 
 
 class SGetClientHandshake(ClientConnection, Handshake):
-    def __init__(self):
+    def __init__(self, *args):
         Handshake.__init__(self)
-        ClientConnection.__init__(self,args[0])
+        ClientConnection.__init__(self, args[0])
 
     def run(self):
         """

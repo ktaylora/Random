@@ -40,11 +40,6 @@ t_monitoring_data <- read.csv(
 
       t_locations$Area <- toupper(gsub(as.vector(t_locations$Area),pattern=" ",replacement=""))
 
-s <- SpatialPointsDataFrame(
-                    coords = data.frame(x = t_locations$x, y = t_locations$y),
-                      data = data.frame(site = as.vector(t_locations$New.Name))
-     )
-projection(s) <- projection("+init=epsg:4326")
 # strip out observations not taken during a minute interval
 suppressWarnings( t_monitoring_data <- t_monitoring_data[!
   is.na(as.numeric(as.vector(t_monitoring_data$Minute.Interval))), ] )
@@ -133,7 +128,8 @@ t_monitoring_data <- t_monitoring_data[
   ((toupper(as.vector(t_monitoring_data$X4.letter.code))))
   %in%
   priority_spp_four_letter_codes, ]
-# determine detections and abundance for each relevant species at each site/year/season
+# determine detections and abundance for each relevant species at each site/year/season/day
+# please forgive this monstrosity of nested for-loops.  refactor me later.
 detections <- list();
 for (spp in unique(as.vector(t_monitoring_data$X4.letter.code))){
   focal <- t_monitoring_data[t_monitoring_data$X4.letter.code == spp,]
@@ -146,32 +142,36 @@ for (spp in unique(as.vector(t_monitoring_data$X4.letter.code))){
           for (l in unique(season$Array.Site)){
             site <- season[season$Array.Site == l, ]
             if (nrow(site) > 0){
-              detection <- rep(0,10) # 10-minute intervals
-              detection[as.numeric(as.vector(site$Minute.Interval))] <- 1;
-              # convert distance string to something tractable
-              distances <- as.vector(site$Distance..m.)
-              distances <- gsub(distances, pattern = "-", replacement = "+")
-              distances <- gsub(distances, pattern = ">", replacement = "")
-              for (i in 1:length(distances)){
-                if (grepl(distances[i], pattern = "[+]")){
-                  distances[i] <- (eval(parse(text = distances[i])) / 2)
+              for(m in unique(as.vector(site$Date))){
+                day <- site[site$Date == m, ]
+                if(nrow(day)>0){
+                  detection <- rep(0,10) # 10-minute intervals
+                  detection[as.numeric(as.vector(day$Minute.Interval))] <- 1;
+                  # convert distance string to something tractable
+                  distances <- as.vector(day$Distance..m.)
+                  distances <- gsub(distances, pattern = "-", replacement = "+")
+                  distances <- gsub(distances, pattern = ">", replacement = "")
+                  for (i in 1:length(distances)){
+                    if (grepl(distances[i], pattern = "[+]")){
+                      distances[i] <- (eval(parse(text = distances[i])) / 2)
+                    }
+                  }
+                  # build a table for focal site
+                  detections[[length(detections)+1]] <-
+                  data.frame(spp = as.vector(day$X4.letter.code),
+                             site = day$Array.Site[1],
+                             date = day$Date[1],
+                             year = day$Year[1],
+                             season = day$Season[1],
+                             wind_speed = day$Wind.Speed[1],
+                             temp = mean(day$Temp),
+                             time = round(median(day$Time)),
+                             abundance = sum(as.numeric(day$Number), na.rm = T),
+                             distance = mean(as.numeric(distances)),
+                             det_hist = paste(as.character(detection), collapse = "")
+                             )
                 }
               }
-              # build a table for focal site
-              detections[[length(detections)+1]] <-
-              data.frame(spp = as.vector(site$X4.letter.code),
-                         site = site$Array.Site[1],
-                         date = site$Date[1],
-                         year = site$Year[1],
-                         season = site$Season[1],
-                         wind_speed = site$Wind.Speed[1],
-                         temp = mean(site$Temp),
-                         time = round(median(site$Time)),
-                         abundance = sum(as.numeric(site$Number), na.rm = T),
-                         distance = mean(as.numeric(distances)),
-                         det_hist = paste(as.character(detection), collapse = "")
-                         )
-
             }
           }
         }
@@ -185,6 +185,10 @@ detections <- do.call(rbind, detections) # make this into a table
   detections$Area <- detections$site
     detections <- merge(t_locations[, c("Area", "x", "y")], detections, by = "Area")
       detections <- detections[,names(detections) != "Area"]
+
+s <- SpatialPointsDataFrame(coords=data.frame(x=detections$x,y=detections$y),data=detections[,3:ncol(detections)])
+  projection(s) <- projection("+init=epsg:4326")
+    s <- s[!duplicated(s@data), ] # make sure there aren't any superflous entries
 
 # decompress our LANDFIRE data
 
