@@ -9,10 +9,16 @@ y <- rnorm(100,1:100,12)                             # response data
 
 solve.regression <- function(b,X){ 
   sum <- rep(0,nrow(X))
-  for(i in 2:ncol(X)){
+  for (i in 2:ncol(X)){
     sum <- sum + (b[i]*X[,i])
   }
   return(sum+b[1])
+}
+
+mean.normalization <- function(X){
+  for (i in 2:ncol(X)){
+    X[,i] <- (X[, i] - mean(X[, i],na.rm = T)) / sd(X[, i])
+  }
 }
 
 solve.betas <- function(X,y){
@@ -25,7 +31,7 @@ solve.residuals <- function(b,X,y){
 
 np.bootstrap <- function(X,y,n=100,reportSE=T){
   betas <- NA
-  for(i in 1:n){
+  for (i in 1:n){
     x <- X
     s <- sample(1:nrow(X),replace=T)
     y.bs <- y[s]
