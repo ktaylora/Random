@@ -56,3 +56,6 @@ for shape in s.shapes:
     r = d + "\\" + shape[0:4] + ".tif"
     o = arcpy.TopoToRaster_3d(inPointElevations, r, 500, extent=base_contours, maximum_iterations=200, enforce="ENFORCE", data_type="SPOT")
     # crop and mask to the extent of the High Plains region shapefile.
+    o = ExtractByMask(o,"hp_boundary.shp")
+    o.save(r)
+    
