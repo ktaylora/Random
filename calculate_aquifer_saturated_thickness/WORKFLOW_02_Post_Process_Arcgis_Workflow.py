@@ -54,7 +54,8 @@ for shape in s.shapes:
     # inPointElevations=TopoPointElevation([s, 'strtd_t'])
     inPointElevations = '%s strtd_t POINTELEVATION; %s depth CONTOUR' % (shape, base_contours)
     r = d + "\\" + shape[0:4] + ".tif"
-    o = arcpy.TopoToRaster_3d(inPointElevations, r, 500, extent=base_contours, maximum_iterations=200, enforce="ENFORCE", data_type="SPOT")
+    # o = arcpy.TopoToRaster_3d(inPointElevations, r, 500, extent=base_contours, maximum_iterations=200, enforce="ENFORCE", data_type="SPOT")
+    o = arcpy.Kriging_3d(in_point_features = shape, search_radius="Variable 6", semiVariogram_props="Spherical",z_field = 'strtd_t', out_surface_raster=r,  cell_size=30)
     # crop and mask to the extent of the High Plains region shapefile.
     ExtractByMask(o,"hp_boundary.shp").save(r)
-    
+    print "processed: " + r
