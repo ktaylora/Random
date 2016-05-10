@@ -18,6 +18,10 @@ if arcpy.CheckExtension("3D") == "Available":
 else:
     exit(" -- 3D Analyst extention is unavailable")
 
+if arcpy.CheckExtension("Spatial") == "Available":
+    arcpy.CheckOutExtension("Spatial")
+else:
+    exit(" -- Spatial Analyst extention is unavailable")
 
 class ShapeFiles:
     def __init__(self, *args):
@@ -26,6 +30,7 @@ class ShapeFiles:
         :rtype: vector
         """
         self.shapes = filter(lambda x: x.endswith('.shp'), args[0])
+        self.shapes = filter(lambda x: x.startswith(('19', '20')), self.shapes)
         if len(self.shapes) == 0:
             exit(" -- quitting: no shapefiles found in path")
 
@@ -34,8 +39,9 @@ class ShapeFiles:
 # MAIN
 #
 
-if len(sys.argv) > 2:
+if len(sys.argv) < 2:
     d = "."
+    env.workspace = d
     s = ShapeFiles(os.listdir("."))
 else:
     d = sys.argv[1]
@@ -46,8 +52,7 @@ print "-- processing workflow"
 
 for shape in s.shapes:
     # inPointElevations=TopoPointElevation([s, 'strtd_t'])
-    inPointElevations = '%s strtd_t POINTELEVATION; %s ELEV CONTOUR' % (shape, base_contours)
-    print inPointElevations
+    inPointElevations = '%s strtd_t POINTELEVATION; %s depth CONTOUR' % (shape, base_contours)
     r = d + "\\" + shape[0:4] + ".tif"
-    o = arcpy.TopoToRaster_3d(inPointElevations, r)
+    o = arcpy.TopoToRaster_3d(inPointElevations, r, 500, extent=base_contours, maximum_iterations=200, enforce="ENFORCE", data_type="SPOT")
     # crop and mask to the extent of the High Plains region shapefile.
