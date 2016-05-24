@@ -19,7 +19,7 @@ processFocalRoute <- function(route=NULL){
 
   names(route@data) <- tolower(names(route@data)) #
   cat(" -- reading landcover raster\n")
-  landcover <- raster(paste(sep="",HOME,"/PLJV/landcover/orig/Final_LC_8bit.tif"))
+  landcover <- raster(paste(sep="",HOME,"/Incoming/Final_LC_8bit.tif"))
   cat(" -- sampling around vertices for route:",unique(route$rteno),"\n")
   points  <- habitatWorkbench::sampleAroundVertices(s=route,maxDist=2200,n=350) # generate a number of sampling points around each route to derive our site-level landscape metrics
   cat(" -- n=",length(points),"points generated\n")
