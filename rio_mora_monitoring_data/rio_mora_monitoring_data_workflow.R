@@ -28,7 +28,7 @@ priority_spp_four_letter_codes <- c(
   "PEFA",  # peregrin falcon
   "SWFL",  # southwestern willow flycatcher
   "SWHA",  # swainson’s hawk
-  "YEWA"  # yellow warbler
+  "YEWA"   # yellow warbler
 )
 
 ## CLEAN-UP MONITORING DATA AND REPORT OBSERVATIONS TO USER
@@ -192,9 +192,9 @@ s <- SpatialPointsDataFrame(coords=data.frame(x=detections$x,y=detections$y),dat
 
 # decompress our LANDFIRE data
 
-system("unzip -o ~/Incoming/rio_mora_ld/LANDFIRE/*US_130EVH.zip -d /tmp");
-system("unzip -o ~/Incoming/rio_mora_ld/LANDFIRE/*US_130EVT.zip -d /tmp");
-system("unzip -o ~/Incoming/rio_mora_ld/LANDFIRE/*US_130EVC.zip -d /tmp");
+system("unzip -o ~/Incoming/rio_mora_ld/Raster/LANDFIRE/*US_130EVH.zip -d /tmp");
+system("unzip -o ~/Incoming/rio_mora_ld/Raster/LANDFIRE/*US_130EVT.zip -d /tmp");
+system("unzip -o ~/Incoming/rio_mora_ld/Raster/LANDFIRE/*US_130EVC.zip -d /tmp");
 
 veg_height <- raster("/tmp/US_130EVH/us_130evh");
   veg_type <- raster("/tmp/US_130EVT/us_130evt");
@@ -203,7 +203,8 @@ veg_height <- raster("/tmp/US_130EVH/us_130evh");
 # prepare buffers around sites
       s <- spTransform(s, CRS(projection(veg_height))); # use a consistent CRS in meters
 
-  s_3x3 <- gBuffer(s, byid = T, width = 45, capStyle = "square");
-  s_6x6 <- gBuffer(s, byid = T, width = 90, capStyle = "square");
-s_12x12 <- gBuffer(s, byid = T, width = 180, capStyle = "square");
-s_24x24 <- gBuffer(s, byid = T, width = 360, capStyle = "square");
+  s_1 <- gBuffer(s, byid = T, width = 300, capStyle = "square");
+  s_2 <- gBuffer(s, byid = T, width = 600, capStyle = "square");
+  s_3 <- gBuffer(s, byid = T, width = 1000, capStyle = "square");
+  s_4 <- gBuffer(s, byid = T, width = 1876, capStyle = "square");
+  s_5 <- gBuffer(s, byid = T, width = 3000, capStyle = "square");
