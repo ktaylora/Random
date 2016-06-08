@@ -196,15 +196,85 @@ system("unzip -o ~/Incoming/rio_mora_ld/Raster/LANDFIRE/*US_130EVH.zip -d /tmp")
 system("unzip -o ~/Incoming/rio_mora_ld/Raster/LANDFIRE/*US_130EVT.zip -d /tmp");
 system("unzip -o ~/Incoming/rio_mora_ld/Raster/LANDFIRE/*US_130EVC.zip -d /tmp");
 
+cat(" -- calculating vegetation height for associations\n")
+
 veg_height <- raster("/tmp/US_130EVH/us_130evh");
-  veg_type <- raster("/tmp/US_130EVT/us_130evt");
- veg_cover <- raster("/tmp/US_130EVC/us_130evc");
+  if(!file.exists("grass_height.tif")){
+    grass_height <- veg_height
+      grass_height[grass_height<101] <- NA
+      grass_height[grass_height>103] <- NA
+        grass_height <- ((2*(grass_height-100)*0.25))-0.25 # units are meters
+    writeRaster(grass_height,"grass_height.tif",overwrite=T)
+  } else {
+    grass_height <- raster("grass_height.tif")
+  }
+  if(!file.exists("shrub_height.tif")){
+    shrub_height <- veg_height
+      shrub_height[shrub_height<104] <- NA
+      shrub_height[shrub_height>107] <- NA
+        shrub_height[shrub_height==104] <- 0.25
+        shrub_height[shrub_height==105] <- 0.75
+        shrub_height[shrub_height==106] <- 2
+        shrub_height[shrub_height==107] <- 3.25
+    writeRaster(shrub_height,"shrub_height.tif",overwrite=T)
+  } else {
+    shrub_height <- raster("shrub_height.tif")
+  }
+  if(!file.exists("tree_height.tif")){
+    tree_height <- veg_height
+      tree_height[tree_height<108] <- NA
+      tree_height[tree_height>111] <- NA
+        tree_height[tree_height==108] <- 2.5
+        tree_height[tree_height==109] <- 7.5
+        tree_height[tree_height==110] <- 17.5
+        tree_height[tree_height==111] <- 37.5
+    writeRaster(tree_height,"tree_height.tif",overwrite=T)
+  } else {
+    tree_height <- raster("tree_height.tif")
+  }
+
+cat(" -- calculating vegetation cover for associations\n")
+
+veg_cover <- raster("/tmp/US_130EVC/us_130evc");
+  if(!file.exists("grass_perc_cover.tif")){
+    grass_perc_cover <- veg_cover
+     grass_perc_cover[grass_perc_cover < 121] <- NA
+     grass_perc_cover[grass_perc_cover > 129] <- NA
+       grass_perc_cover <- ((grass_perc_cover-120)*10)+5
+    writeRaster(grass_perc_cover,"grass_perc_cover.tif",overwrite=T)
+  } else {
+    grass_perc_cover <- raster("grass_perc_cover.tif")
+  }
+  if(!file.exists("shrub_perc_cover.tif")){
+    shrub_perc_cover <- veg_cover
+     shrub_perc_cover[shrub_perc_cover < 111] <- NA
+     shrub_perc_cover[shrub_perc_cover > 119] <- NA
+       shrub_perc_cover <- ((shrub_perc_cover-110)*10)+5
+     writeRaster(shrub_perc_cover,"shrub_perc_cover.tif",overwrite=T)
+  } else {
+    shrub_perc_cover <- raster("shrub_perc_cover.tif")
+  }
+  if(!file.exists("tree_perc_cover.tif")){
+    tree_perc_cover <- veg_cover
+     tree_perc_cover[tree_perc_cover < 101] <- NA
+     tree_perc_cover[tree_perc_cover > 109] <- NA
+       tree_perc_cover <- ((tree_perc_cover-100)*10)+5
+    writeRaster(tree_perc_cover,"tree_perc_cover.tif",overwrite=T)
+  } else {
+    tree_perc_cover <- raster("tree_perc_cover.tif")
+  }
 
 # prepare buffers around sites
+buffers <- vector('list', 30) # create enough space for a range of buffers from 100m -> 3000m
       s <- spTransform(s, CRS(projection(veg_height))); # use a consistent CRS in meters
 
-  s_1 <- gBuffer(s, byid = T, width = 300, capStyle = "square");
-  s_2 <- gBuffer(s, byid = T, width = 600, capStyle = "square");
-  s_3 <- gBuffer(s, byid = T, width = 1000, capStyle = "square");
-  s_4 <- gBuffer(s, byid = T, width = 1876, capStyle = "square");
-  s_5 <- gBuffer(s, byid = T, width = 3000, capStyle = "square");
+for(i in 1:length(buffers)){
+  buffers[[i]] <- gBuffer(s, byid = T, width = i*100, capStyle = "square");
+}
+# extract
+for(i in 1:length(buffers)){
+  buffers[[i]]$veg_height <- suppressWarnings(raster::extract(veg_height,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+  buffers[[i]]$veg_perc_cover <- suppressWarnings(raster::extract(veg_cover,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+}; cat("\n");
+
+lapply(buffers,y=veg_height,FUN=raster::extract)
