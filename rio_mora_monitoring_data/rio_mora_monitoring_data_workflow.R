@@ -6,6 +6,7 @@ require(raster)
 require(rgdal)
 require(rgeos)
 require(landscapeAnalysis)
+require(randomForest)
 
 # priority species for refuge planning, as mined from Rio Mora's LPP
 priority_spp_four_letter_codes <- c(
@@ -233,7 +234,7 @@ veg_height <- raster("/tmp/US_130EVH/us_130evh");
     tree_height <- raster("tree_height.tif")
   }
 
-cat(" -- calculating vegetation cover for associations\n")
+cat(" -- calculating vegetation % cover for associations\n")
 
 veg_cover <- raster("/tmp/US_130EVC/us_130evc");
   if(!file.exists("grass_perc_cover.tif")){
@@ -264,17 +265,71 @@ veg_cover <- raster("/tmp/US_130EVC/us_130evc");
     tree_perc_cover <- raster("tree_perc_cover.tif")
   }
 
-# prepare buffers around sites
-buffers <- vector('list', 30) # create enough space for a range of buffers from 100m -> 3000m
-      s <- spTransform(s, CRS(projection(veg_height))); # use a consistent CRS in meters
+# DON'T BOTHER WITH PATCH METRICS FOR grasslands.
+# Most of the region is "grass" and the vertical and horizontal structral characteristics are better captured
+# in the veg height and % cover calculated above for associations.
+#
+# cat(" -- calculating vegetation patch metrics for associations\n")
+# veg_type <- raster("/tmp/US_130EVT/us_130evt");
+#   if(!file.exists("grass.tif")){
+#     t <- veg_type@data@attributes
+#       grass <- veg_type %in% t[t$EVT_PHYS == "Grassland",]$ID
+#     writeRaster(grass,"grass.tif")
+#   } else {
+#     grass <- raster("grass.tif")
+#   }
 
-for(i in 1:length(buffers)){
-  buffers[[i]] <- gBuffer(s, byid = T, width = i*100, capStyle = "square");
+if(!file.exists("rio_mora_monitoring_data_processed.csv")){
+  # prepare buffers around sites
+  buffers <- vector('list', 30) # create enough space for a range of buffers from 100m -> 3000m
+        s <- spTransform(s, CRS(projection(veg_height))); # use a consistent CRS in meters
+
+  for(i in 1:length(buffers)){
+    buffers[[i]] <- gBuffer(s, byid = T, width = i*100, capStyle = "square");
+  }
+  # extract
+  for(i in 1:length(buffers)){
+    buffers[[i]]$tree_perc_cover  <- suppressWarnings(raster::extract(tree_perc_cover,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+    buffers[[i]]$shrub_perc_cover <- suppressWarnings(raster::extract(shrub_perc_cover,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+    buffers[[i]]$grass_perc_cover <- suppressWarnings(raster::extract(grass_perc_cover,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+
+    buffers[[i]]$tree_height  <- suppressWarnings(raster::extract(tree_height,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+    buffers[[i]]$shrub_height <- suppressWarnings(raster::extract(shrub_height,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+    buffers[[i]]$grass_height <- suppressWarnings(raster::extract(grass_height,buffers[[i]],fun=mean,na.rm=T)); cat(".")
+
+    names(buffers[[i]]@data) <- c(names(buffers[[i]]@data[,1:11]),paste(names(buffers[[i]]@data[,12:17]),i,sep="_"))
+    cat(paste("(",i,"/",length(buffers),")",sep=""))
+  }; cat("\n");
+  # merge into a single table
+  merged <- buffers[[1]]@data
+    for(i in 2:length(buffers)){
+      merged <- cbind(merged,buffers[[i]]@data[,12:17])
+    }
+      s@data <- merged
+  # write to disk
+  write.csv(s@data,"rio_mora_monitoring_data_processed.csv",row.names=F) # too many variables to store as a spatial object
+} else {
+  t <- read.csv("rio_mora_monitoring_data_processed.csv")
+    s@data <- t
 }
-# extract
-for(i in 1:length(buffers)){
-  buffers[[i]]$veg_height <- suppressWarnings(raster::extract(veg_height,buffers[[i]],fun=mean,na.rm=T)); cat(".")
-  buffers[[i]]$veg_perc_cover <- suppressWarnings(raster::extract(veg_cover,buffers[[i]],fun=mean,na.rm=T)); cat(".")
-}; cat("\n");
 
-lapply(buffers,y=veg_height,FUN=raster::extract)
+# train some preliminary random forests to each species
+t <- t[,!grepl(names(t),pattern="site|date|det_hist|distance")]
+
+models <- list()
+for(spp in unique(t$spp)){
+  training <- t[t$spp == spp,] # figure out our non-zero observations
+  absences <- t[t$spp != spp,]
+      absences$abundance <- 0
+  training <- rbind(training,absences)
+    training <- training[,!grepl(names(training),pattern="spp")]
+      training[is.na(training)] <- 0
+
+  models[[length(models)+1]] <- randomForest(abundance~.,data=training,ntree=8000)
+}
+
+names(models) <- as.character(unique(t$spp))
+
+# Beyond summary statistics, these data don't look that promising for fitting any models
+# sort(importance(models$LASP)[,1]/max(importance(models$LASP)[,1]),decreasing=T)
+# sort(importance(models$PIJA)[,1]/max(importance(models$PIJA)[,1]),decreasing=T)
