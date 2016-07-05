@@ -330,6 +330,8 @@ for(spp in unique(t$spp)){
 
 names(models) <- as.character(unique(t$spp))
 
+save(list=ls(pattern="^t$|^s$|models"),file="rio_mora_monitoring_data_workspace.rdata")
+
 # Beyond summary statistics, these data don't look that promising for fitting any models
 # sort(importance(models$LASP)[,1]/max(importance(models$LASP)[,1]),decreasing=T)
 # sort(importance(models$PIJA)[,1]/max(importance(models$PIJA)[,1]),decreasing=T)
