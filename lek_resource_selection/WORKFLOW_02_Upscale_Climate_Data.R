@@ -1,5 +1,5 @@
 #
-# WORKFLOW 2 : "Upscale" climate data using a high-resolution DEM
+# WORKFLOW 2 : Upsample climate data using a high-resolution DEM
 #
 # Author: Kyle Taylor (kyle.taylor@pljv.org) [2016]
 #
@@ -64,10 +64,15 @@ cl <- parallel::makeCluster(4) # use 4 CPU cores
 
 # by default, let's assume the user passed us a directory path at runtime
 argv <- commandArgs(trailingOnly=T)
-path <- ifelse(file.exists(argv),argv,".")
+
+if(file.exists(argv)){
+  path <- argv
+} else {
+  path <- "."
+}
 
 # read-in our source raster data from a directory path provided by the user
-elevation  <- raster(paste(path,"elevation.img",sep="/"))
+elevation  <- raster(paste(path,"elevation.tif",sep="/"))
 cliRasters <- ifelse(file.exists(path), path, file.choose())
   cliRasters <- parLapply(cl,as.list(c("mat_tenths","map","ffp")),fun=fetchClimateData, dest=cliRasters)
 
@@ -103,9 +108,10 @@ for(i in 1:length(cliRasterSamplePts)){
   trainingData[[length(trainingData)+1]] <- cbind(cliRasterSamplePts[[i]]@data,elevSamplePts[[i]])
     trainingData[[i]] <- trainingData[[i]][,names(trainingData[[i]])!="ID"] # strip out a looming "ID" field from our explanatory data
   # fit a simple linear regression and report the fit to our user
-  models[[length(models)+1]] <- lm(formula(paste(names(trainingData[[i]]),collapse="~")), data=trainingData[[i]]) # model formula : climate variable ~ f(elevation)
+  models[[length(models)+1]] <- suppressWarnings(rlm(formula(paste(names(trainingData[[i]]),collapse="~")),
+                                    scale.est="Huber", psi=psi.hampel, init="lts", na.rm=T,
+                                    data=trainingData[[i]])) # model formula : climate variable ~ f(elevation)
   cat(paste("      -- formula: ",paste(names(trainingData[[i]]),collapse="~"),"\n",sep=""))
-  cat(paste("        -- r-squared: ",summary(models[[i]])$r.squared,"\n",sep=""))
 }
 
 # project our overfit models across the extent of the current landscape
