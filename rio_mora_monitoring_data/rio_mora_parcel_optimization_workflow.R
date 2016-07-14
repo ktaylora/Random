@@ -55,11 +55,11 @@ s <- readOGR(".","mora_county_parcels")
 
 s <- readOGR(".","san_miguel_county_parcels")
   s <- calculateScores(s)
-    vectorToRaster(scounty_prefix="san_miguel_county")
+    vectorToRaster(s, county_prefix="san_miguel_county")
 
 s <- readOGR(".","colfax_county_parcels")
   s <- calculateScores(s)
-    vectorToRaster(scounty_prefix="colfax_county")
+    vectorToRaster(s, county_prefix="colfax_county")
 
 # writeOGR(s,layer="tri_county_area_landowner_boundaries_v2",
 #   "tri_county_area_landowner_boundaries_v2.geoJson", driver="GeoJSON",
