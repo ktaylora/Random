@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#
+# GDAL-based GIS Workflow for Estimating Volume of Water Contributed by Playas to the Aquifer
+#
+# Assumes that the CWD contains (1) a time-series of LANDSAT "wetness" surfaces as .img files, 
+# (2) focal counties as a shapefile, and (3) the PLJV probable playas (v4) shapefile.
+#
+# Author: Kyle Taylor (kyle.taylor@pljv.org) [2016]
+#
+
 # pre-run clean-up
 rm -rf `ls -1 *.tif | grep -v "playa"`
 # crop wetness to our focal counties to speed up resampling
