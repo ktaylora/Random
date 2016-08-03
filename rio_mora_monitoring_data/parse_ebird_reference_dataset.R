@@ -49,17 +49,16 @@ priority_spp_binomials <- c(
   "buteoswainsoni",           # swainson’s hawk
   "setophagapetechia"         # yellow warbler
 )
-# unpack our eBird Reference Data
-if(!dir.exists("~/erd")){
-  dir.create("~/erd")
-  system("tar xzf ~/Incoming/ebird_number_crunching/count_data/erd_us48_data_grouped_by_year_v5.0.tar.gz -C ~/erd");
-}
-
 # if we have an existing dataset, let's use it
 if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv"))){
   s <- rgdal::readOGR(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/",sep=""),"pts_2002_2012")
     s@data <- read.csv(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))
 } else {
+  # unpack our eBird Reference Data
+  if(!dir.exists("~/erd")){
+    dir.create("~/erd")
+    system("tar xzf ~/Incoming/ebird_number_crunching/count_data/erd_us48_data_grouped_by_year_v5.0.tar.gz -C ~/erd");
+  }
   # Treat each year as an independent observation within the time-series
   merged <- list()
   cat(" -- processing:");
@@ -74,7 +73,7 @@ if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_20
                file.format = list(header = T, row.names = F)
                )
     # parse species names into something greppable
-    counts <- t[,18:ncol(t)]
+    counts <- t[,18:ncol(t)] # first 17 columns are junk
     names <- names(counts)
       names <- tolower(gsub(names(counts),pattern="[.]|_",replacement=""))
         names(counts) <- names
