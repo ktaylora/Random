@@ -45,7 +45,7 @@ class Shapefile:
             if req_playa_fields[i] in fields:
                 field_match += 1
 
-        self.is_valid = (field_match == 3)
+        self.is_valid = (field_match == len(req_playa_fields))
 
 
 def calc_restore_cost (hydromod, farmed, playaacres):
