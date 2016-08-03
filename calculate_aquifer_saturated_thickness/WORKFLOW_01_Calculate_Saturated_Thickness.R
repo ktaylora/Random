@@ -19,7 +19,7 @@ aquiferAnalysis <- new.env()
 #
 # fetchWellPointData()
 #
-aquiferAnalysis$fetchWellPointData <- function(){
+fetchWellPointData <- function(){
   baseUrl <- "http://ne.water.usgs.gov/ogw/hpwlms/wldata/d_"
     years <- 1995:2013
     toGet <- zips  <- paste("WL_ALL_",years,".zip",sep="")
@@ -49,6 +49,8 @@ aquiferAnalysis$unpackZip <- function(x){
 }
 #
 # calcSaturatedThickness()
+# 
+# this is outdated and could use some refactorin' so that it is actually useful.
 #
 aquiferAnalysis$calcSaturatedThickness <- function(x){
   # censor non-sense values
