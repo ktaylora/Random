@@ -2,6 +2,7 @@ require(sqldf)
 require(tcltk)
 require(rgdal)
 require(raster)
+require(landscapeAnalysis)
 
 # priority species for refuge planning, as mined from Rio Mora's LPP
 priority_spp_four_letter_codes <- c(
@@ -49,8 +50,75 @@ priority_spp_binomials <- c(
   "buteoswainsoni",           # swainson’s hawk
   "setophagapetechia"         # yellow warbler
 )
+
+processLandfireZip <- function(x){
+  zip_name <- unlist(strsplit(x,"/"))
+    zip_name <- zip_name[length(zip_name)]
+  zip_folders <- unlist(strsplit(zip_name,split="_"))
+    zip_folders <- gsub(paste(zip_folders[2:3],collapse="_"),pattern=".zip",replacement="")
+
+  system(paste("unzip -o ",x," -d /tmp",sep=""));
+
+  if(grepl(x,pattern="EVH")){ # is this VEG HEIGHT data?
+    cat(" -- calculating vegetation height for associations\n")
+
+    veg_height <- raster(paste("/tmp",toupper(zip_folders),tolower(zip_folders),sep="/"));
+
+    grass_height <- veg_height
+      grass_height[grass_height<101] <- NA
+        grass_height[grass_height>103] <- NA
+          grass_height <- ((2*(grass_height-100)*0.25))-0.25 # units are meters
+
+    shrub_height <- veg_height
+      shrub_height[shrub_height<104] <- NA
+      shrub_height[shrub_height>107] <- NA
+      shrub_height[shrub_height==104] <- 0.25
+      shrub_height[shrub_height==105] <- 0.75
+      shrub_height[shrub_height==106] <- 2
+      shrub_height[shrub_height==107] <- 3.25
+
+    tree_height <- veg_height
+      tree_height[tree_height<108] <- NA
+      tree_height[tree_height>111] <- NA
+      tree_height[tree_height==108] <- 2.5
+      tree_height[tree_height==109] <- 7.5
+      tree_height[tree_height==110] <- 17.5
+      tree_height[tree_height==111] <- 37.5
+
+    return(list(grass_height,shrub_height,tree_height))
+
+  } else if(grepl(x,pattern="EVC")) { # is this veg cover data?
+    cat(" -- calculating vegetation % cover for associations\n")
+
+    veg_cover <- raster(paste("/tmp",toupper(zip_folders),tolower(zip_folders),sep="/"));
+
+    grass_perc_cover <- veg_cover
+      grass_perc_cover[grass_perc_cover < 121] <- NA
+      grass_perc_cover[grass_perc_cover > 129] <- NA
+      grass_perc_cover <- ((grass_perc_cover-120)*10)+5
+
+    shrub_perc_cover <- veg_cover
+      shrub_perc_cover[shrub_perc_cover < 111] <- NA
+      shrub_perc_cover[shrub_perc_cover > 119] <- NA
+      shrub_perc_cover <- ((shrub_perc_cover-110)*10)+5
+
+
+    tree_perc_cover <- veg_cover
+      tree_perc_cover[tree_perc_cover < 101] <- NA
+      tree_perc_cover[tree_perc_cover > 109] <- NA
+      tree_perc_cover <- ((tree_perc_cover-100)*10)+5
+
+    return(list(grass_perc_cover,shrub_perc_cover,tree_perc_cover))
+  }
+  return(NULL)
+}
+
+#
+# MAIN
+#
+
 # if we have an existing dataset, let's use it
-if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv"))){
+if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))){
   s <- rgdal::readOGR(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/",sep=""),"pts_2002_2012")
     s@data <- read.csv(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))
 } else {
@@ -119,13 +187,31 @@ if(file.exists("grid.tif")){
 if(sum(!priority_spp_binomials %in% names(s@data))>0){
   warning("not all species binomial names were found in data frame --
     only re-gridding those species we have data for")
-  in <- priority_spp_binomials %in% names(s@data)
-  priority_spp_binomials <- priority_spp_binomials[in]
-  priority_spp_four_letter_codes <- priority_spp_four_letter_codes[in]
+  have <- priority_spp_binomials %in% names(s@data)
+  priority_spp_binomials <- priority_spp_binomials[have]
+  priority_spp_four_letter_codes <- priority_spp_four_letter_codes[have]
 }
+
 # re-grid our original ERD points into a raster stack, then parse the stack back to points,
 # treating the data as presence(1)/absence(0)
-grid <- rasterize(s, field=priority_spp_binomials, fun=function(x,na.rm=T){ as.numeric(sum(x,na.rm=T)>0) }, na.rm=T)
-grid_pts <- rasterToPoints(grid_attributed[[1:nlayers(grid_attributed)]],sp=T)
-names(grid_pts) <- priority_spp_four_letter_codes
+
+grid_pts <- rasterize(s,grid,field=priority_spp_binomials, fun=function(x,na.rm=T){ as.numeric(sum(x,na.rm=T)>0) }, na.rm=T)
+  grid_pts <- rasterToPoints(grid_pts[[1:nlayers(grid_pts)]],sp=T)
+    names(grid_pts) <- priority_spp_four_letter_codes
+
 writeOGR(grid_pts,".","spp_grid_points_processed", driver="ESRI Shapefile",overwrite=T)
+
+# process explanatory data for our grid points
+
+cover_zips <- list.files("Raster/LANDFIRE/broader_regional_landscape/",pattern="EVC",full.names=T)
+height_zips <- list.files("Raster/LANDFIRE/broader_regional_landscape/",pattern="EVH",full.names=T)
+
+cover <- vector('list',length(cover_zips))
+for(i in 1:length(cover_zips)){
+  cover[[i]] <- processLandfireZip(x=cover_zips[i])
+}
+
+height <- vector('list',length(height_zips))
+for(i in 1:length(height_zips)){
+  height[[i]] <- processLandfireZip(x=height_zips[i])
+}
