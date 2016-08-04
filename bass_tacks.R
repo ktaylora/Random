@@ -7,7 +7,15 @@
 X <- matrix(c(rep(1,100),rnorm(100,1:100,7)),ncol=2) # design matrix
 y <- rnorm(100,1:100,12)                             # response data
 
-solve.regression <- function(b,X){ 
+expit <- function(x){
+  exp(x)/(1+exp(x))
+}
+
+logit <- function(x){
+  log(x/(1-x))
+}
+
+solve_regression <- function(b,X){ 
   sum <- rep(0,nrow(X))
   for (i in 2:ncol(X)){
     sum <- sum + (b[i]*X[,i])
@@ -15,21 +23,21 @@ solve.regression <- function(b,X){
   return(sum+b[1])
 }
 
-mean.normalization <- function(X){
+mean_normalization <- function(X){
   for (i in 2:ncol(X)){
     X[,i] <- (X[, i] - mean(X[, i],na.rm = T)) / sd(X[, i])
   }
 }
 
-solve.betas <- function(X,y){
+solve_betas <- function(X,y){
   as.vector(base::solve(t(X)%*%X)%*%(t(X)%*%y))
 }
 
-solve.residuals <- function(b,X,y){
+solve_residuals <- function(b,X,y){
   y-solve.regression(b,X)
 }
 
-np.bootstrap <- function(X,y,n=100,reportSE=T){
+np_bootstrap <- function(X,y,n=100,reportSE=T){
   betas <- NA
   for (i in 1:n){
     x <- X
@@ -53,23 +61,23 @@ np.bootstrap <- function(X,y,n=100,reportSE=T){
   return(betas)
 }
 
-solve.ser <- function(X,y){
+solve_ser <- function(X,y){
   M <- diag(nrow(X))-(X%*%base::solve((t(X)%*%X))%*%t(X))
   L <- diag(nrow(X))-((rep(1,nrow(X))%*%t(rep(1,nrow(X))))/nrow(X))
   t(y)%*%(M%*%y) / (length(y)-(ncol(X)-1))
 }
 
-solve.rss <- function(X,y){
+solve_rss <- function(X,y){
   nrow(X)-(ncol(X-1))/(nrow(X)) * solve.ser(X,y)
 }
 
-r.squared <- function(X,y){
+r_squared <- function(X,y){
   M <- diag(nrow(X))-(X%*%base::solve((t(X)%*%X))%*%t(X))
   L <- diag(nrow(X))-((rep(1,nrow(X))%*%t(rep(1,nrow(X))))/nrow(X))
   as.vector(1-((t(y)%*%(M%*%y))/(t(y)%*%(L%*%y))))
 }
 
-b<-solve.betas(X,y)
+b  <- solve.betas(X,y)
 bs <- np.bootstrap(X,y,n=5000)
 plot(y~X[,2])
 lines(solve.regression(b,matrix(c(rep(1,119),0:118),ncol=2)),col="red")
