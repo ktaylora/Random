@@ -49,7 +49,7 @@ aquiferAnalysis$unpackZip <- function(x){
 }
 #
 # calcSaturatedThickness()
-# 
+#
 # this is outdated and could use some refactorin' so that it is actually useful.
 #
 aquiferAnalysis$calcSaturatedThickness <- function(x){
@@ -149,4 +149,15 @@ calcSaturatedThickness_byYear <- function(x,write=F,env=aquiferAnalysis){
 
 cl <- makeCluster(parallel::detectCores()-1)
   dataZips <- fetchWellPointData()
-    r <- parLapply(cl,as.list(dataZips),fun=calcSaturatedThickness_byYear,write=T,env=aquiferAnalysis)
+    s <- parLapply(cl,as.list(dataZips),fun=calcSaturatedThickness_byYear,write=T,env=aquiferAnalysis)
+
+background_pts <- sampleRandom(raster(extent(s),vals=1,nrow=20000,ncol=20000),size=90000,sp=T)
+  background_pts <- background_pts[!is.na(sp::over(background_pts,spTransform(rgdal::readOGR("hp_bound2010","hp_bound2010",verbose=F),CRS(projection(background_pts)))))[,1],]
+    projection(background_pts) <- projection("+init=epsg:4326")
+# back-fill missing areas with values from a historical depletion surface : generate random background points with historical sat_thickness
+background <-raster("/home/ktaylora/Incoming/aquifer_saturated_thickness_products/Raster/satThick_10_14.tif")
+background_pts <- spTransform(background_pts,CRS(projection(background)))
+  background_pts$strtd_t <- extract(background,background_pts)
+# make sure our background points are not near our well points
+s_buffered <- gBuffer(s,width=0.035)
+  background_pts <- background_pts[is.na(sp::over(background_pts,spTransform(s_buffered,CRS(projection(background_pts))))[,1]),]
