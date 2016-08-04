@@ -34,7 +34,7 @@ solve_betas <- function(X,y){
 }
 
 solve_residuals <- function(b,X,y){
-  y-solve.regression(b,X)
+  y-solve_regression(b,X)
 }
 
 np_bootstrap <- function(X,y,n=100,reportSE=T){
@@ -48,9 +48,9 @@ np_bootstrap <- function(X,y,n=100,reportSE=T){
       x[,j] <- X[s,j]
     }
     if(is.na(betas[1])){
-      betas <- solve.betas(x,y.bs)
+      betas <- solve_betas(x,y.bs)
     } else {
-      betas <- rbind(betas, solve.betas(x,y.bs))
+      betas <- rbind(betas, solve_betas(x,y.bs))
     }
   }
   if(reportSE){
