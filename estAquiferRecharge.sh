@@ -18,7 +18,7 @@ years=(`ls -1 wet*.img | awk '{ sub("wet","",$1); print $0 }' | awk '{ sub(".img
 # pre-run clean-up
 rm -rf `ls -1 *.tif | grep -v "playa"`
 # crop wetness to our focal counties to speed up resampling
-seq 2004 2014 | awk '{ print "gdalwarp -cutline counties.shp -crop_to_cutline wet"$1".img wet"$1".tif" }' | /bin/bash
+seq ${years[0]} ${years[1]} | awk '{ print "gdalwarp -cutline counties.shp -crop_to_cutline wet"$1".img wet"$1".tif" }' | /bin/bash
 # resample our wetness rasters to a target CRS consistent with our playas raster
 for i in $(seq 2004 2014); do
   gdalwarp -to playas_curry_quay_counties.tif -tr 30.00149 30.00019 -t_srs \
