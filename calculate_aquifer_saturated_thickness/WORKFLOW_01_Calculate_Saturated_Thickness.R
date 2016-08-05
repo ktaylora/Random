@@ -111,6 +111,38 @@ aquiferAnalysis$interpolateBedrockDepth <- function(){
      i <- focal(i, w=matrix(1, 51, 51), mean)
        writeRaster(i,"bedrock.tif")
 }
+#' Use kriging and back-filling to interpolate a saturated thickness surface from well point data
+#' and a historical (reference) surface representing saturated thickness in areas currently unsampled
+aquiferAnalysis$interpolateSaturatedThickness <- function(s){
+  # generate a large number of random points within the spatial extent of our s= well points
+  background_pts <- raster::sampleRandom(raster(extent(s),vals=1,nrow=20000,ncol=20000),size=90000,sp=T)
+    projection(background_pts) <- projection(s)
+  # select only those random points that are within the boundary of the HP Aquifer
+  background_pts <- background_pts[!is.na(sp::over(background_pts,
+    spTransform(rgdal::readOGR("hp_bound2010","hp_bound2010",verbose=F),
+      CRS(projection(background_pts)))))[,1],]
+  # back-fill missing areas with values from a historical depletion surface : generate random background points with historical sat_thickness
+  background <- raster::raster("/home/ktaylora/Incoming/aquifer_saturated_thickness_products/Raster/satThick_10_14.tif")
+  background_pts <- sp::spTransform(background_pts,CRS(projection(background)))
+    background_pts$strtd_t <- raster::extract(background,background_pts)
+  # buffer the initial well points and ensure that our background points
+  # are outside of that buffer distance
+  s_buffered <- suppressWarnings(rgeos::gBuffer(s,width=0.035))
+  doesnt_overlap <- is.na(sp::over(background_pts,
+                                   spTransform(s_buffered,CRS(projection(background_pts))))
+                       )
+  background_pts <- background_pts[doesnt_overlap,]
+  # merge the two geometries together, keeping only the saturated thickness field
+  s@data <- data.frame(strtd_t=s@data[,'strtd_t'])
+  background_pts@data <- data.frame(strtd_t=background_pts@data[,'strtd_t'])
+  pts <- raster::bind(s,sp::spTransform(background_pts,CRS(projection(s))))
+    pts$x <- pts@coords[,1]
+    pts$y <- pts@coords[,2]
+  pts <- pts[which(!is.na(rowSums(pts@data))),] # drop NA values, or gstat::variogram will complain
+  cat(" -- computing the (quadratic) variogram of our points")
+  f <- as.formula(strtd_t ~ x + y + I(x*x)+I(y*y) + I(x*y))
+  variogram  <- gstat::variogram(f, data=pts[sample(1:nrow(pts),size=round(0.25*nrow(pts))),], cloud = TRUE)
+}
 #
 # calcSaturatedThickness_byYear()
 # Parse raw USGS aquifer well data into a shapefile that we can hand-off to ArcGIS. This will generate spatial points
@@ -128,6 +160,7 @@ calcSaturatedThickness_byYear <- function(x,write=F,env=aquiferAnalysis){
 
   # unpack the zipfile passed by the user for the focal year
   focalYear <- gsub(unlist(strsplit(x,split="_"))[3],pattern="[.]zip",replacement="")
+    if(focalYear == "pd") focalYear <- "historical" # Catch 'PD' string from historical well point data
   if(file.exists(paste("saturated_thickness.",focalYear,".tif",sep=""))){ cat(" -- found existing raster for year in CWD.  Quitting.\n"); return(FALSE) }
   cat(" -- parsing zip data for:",focalYear,"\n")
   t <- unpackZip(x)
@@ -150,14 +183,3 @@ calcSaturatedThickness_byYear <- function(x,write=F,env=aquiferAnalysis){
 cl <- makeCluster(parallel::detectCores()-1)
   dataZips <- fetchWellPointData()
     s <- parLapply(cl,as.list(dataZips),fun=calcSaturatedThickness_byYear,write=T,env=aquiferAnalysis)
-
-background_pts <- sampleRandom(raster(extent(s),vals=1,nrow=20000,ncol=20000),size=90000,sp=T)
-  background_pts <- background_pts[!is.na(sp::over(background_pts,spTransform(rgdal::readOGR("hp_bound2010","hp_bound2010",verbose=F),CRS(projection(background_pts)))))[,1],]
-    projection(background_pts) <- projection("+init=epsg:4326")
-# back-fill missing areas with values from a historical depletion surface : generate random background points with historical sat_thickness
-background <-raster("/home/ktaylora/Incoming/aquifer_saturated_thickness_products/Raster/satThick_10_14.tif")
-background_pts <- spTransform(background_pts,CRS(projection(background)))
-  background_pts$strtd_t <- extract(background,background_pts)
-# make sure our background points are not near our well points
-s_buffered <- gBuffer(s,width=0.035)
-  background_pts <- background_pts[is.na(sp::over(background_pts,spTransform(s_buffered,CRS(projection(background_pts))))[,1]),]
