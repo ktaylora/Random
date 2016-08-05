@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# GDAL-based GIS Workflow for Estimating Volume of Water Contributed by Playas to the Aquifer
+# GDAL-based GIS Workflow for Estimating Volume of Water Contributed by Playas as Groundwater Resource
 #
 # Assumes that the CWD contains (1) a time-series of LANDSAT "wetness" surfaces as .img files, 
 # (2) focal counties as a shapefile, and (3) the PLJV probable playas (v4) shapefile.
