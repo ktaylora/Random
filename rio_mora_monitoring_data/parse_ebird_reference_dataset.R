@@ -66,8 +66,8 @@ processLandfireZip <- function(x){
 
     grass_height <- veg_height
       grass_height[grass_height<101] <- NA
-        grass_height[grass_height>103] <- NA
-          grass_height <- ((2*(grass_height-100)*0.25))-0.25 # units are meters
+      grass_height[grass_height>103] <- NA
+      grass_height <- ((2*(grass_height-100)*0.25))-0.25 # units are meters
 
     shrub_height <- veg_height
       shrub_height[shrub_height<104] <- NA
@@ -111,6 +111,13 @@ processLandfireZip <- function(x){
     return(list(grass_perc_cover,shrub_perc_cover,tree_perc_cover))
   }
   return(NULL)
+}
+# merge an Nx3 dimensional list of Landfire raster pieces
+merge_by <- function(x, column=NULL, filename=NULL){
+  # fetch the i'th item from each list in our list-of-lists
+  # e.g., x[1:4,i]
+  focal <- lapply(x, FUN=function(x,i=NULL){ return(x[[i]]) }, i=column)
+  writeRaster(do.call(raster::merge,focal),filename=filename,overwrite=T)
 }
 
 #
@@ -202,16 +209,36 @@ grid_pts <- rasterize(s,grid,field=priority_spp_binomials, fun=function(x,na.rm=
 writeOGR(grid_pts,".","spp_grid_points_processed", driver="ESRI Shapefile",overwrite=T)
 
 # process explanatory data for our grid points
+if(length(list.files(pattern="grass_|shrub_|tree_")!=6)){
+  cover_zips <- list.files("Raster/LANDFIRE/broader_regional_landscape/",pattern="EVC",full.names=T)
+  height_zips <- list.files("Raster/LANDFIRE/broader_regional_landscape/",pattern="EVH",full.names=T)
 
-cover_zips <- list.files("Raster/LANDFIRE/broader_regional_landscape/",pattern="EVC",full.names=T)
-height_zips <- list.files("Raster/LANDFIRE/broader_regional_landscape/",pattern="EVH",full.names=T)
+  cover <- vector('list',length(cover_zips))
+  for(i in 1:length(cover_zips)){
+    cover[[i]] <- processLandfireZip(x=cover_zips[i])
+  }
 
-cover <- vector('list',length(cover_zips))
-for(i in 1:length(cover_zips)){
-  cover[[i]] <- processLandfireZip(x=cover_zips[i])
+  # i.e., processLandfireZip() returns : grass_perc_cover, shrub_perc_cover, tree_perc_cover
+  merge_by(cover,column=1,filename="grass_perc_cover.tif")
+    merge_by(cover,column=2,filename="shrub_perc_cover.tif")
+      merge_by(cover,column=3,filename="tree_perc_cover.tif")
+
+  height <- vector('list',length(height_zips))
+  for(i in 1:length(height_zips)){
+    height[[i]] <- processLandfireZip(x=height_zips[i])
+  }
+
+  merge_by(height,column=1,filename="grass_height.tif")
+    merge_by(height,column=2,filename="shrub_height.tif")
+      merge_by(height,column=3,filename="tree_height.tif")
+
+  rm(height,cover)
+  gc()
 }
-
-height <- vector('list',length(height_zips))
-for(i in 1:length(height_zips)){
-  height[[i]] <- processLandfireZip(x=height_zips[i])
-}
+#
+height[[1]] <- raster("grass_height.tif")
+height[[2]] <- raster("shrub_height.tif")
+height[[3]] <- raster("tree_height.tif")
+ cover[[1]] <- raster("grass_perc_cover.tif")
+ cover[[2]] <- raster("shrub_perc_cover.tif")
+ cover[[3]] <- raster("tree_perc_cover.tif")
