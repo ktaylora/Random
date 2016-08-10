@@ -157,7 +157,7 @@ grid_pts <- rasterize(s,grid,field=priority_spp_binomials, fun=function(x,na.rm=
 # calculate species richness and append to our table
 grid_pts$RICHNESS <- rowSums(grid_pts@data)
 
-# sensor eBird observations that occur in urban areas (i.e., population densities > 500)
+# sensor eBird observations that occur in urban areas (i.e., population densities > 150 sq-km)
 cat(" -- searching for population density raster: gpw-v4-population-density_2015.tif")
 population <- raster(list.files(Sys.getenv("HOME"),pattern="gpw-v4-population-density_2015.tif$",recursive=T,full.names=T)[1])
   population <- landscapeAnalysis::snapTo(population,to=grid)
@@ -165,6 +165,27 @@ population <- raster(list.files(Sys.getenv("HOME"),pattern="gpw-v4-population-de
 keep <- extract(population,grid_pts)
   keep[is.na(keep)] <- 151
 grid_pts <- grid_pts[keep <= 150,]
+
+# Downsample over-abundant richness "bins" to a consistent density to deal with value inflation
+# In effect, we are sensoring average values of richness and allowing more extreme values to have a greater
+# influence on model fit
+
+# convert RICHNESS to units of standard deviation
+unit_sd <- abs(grid_pts$RICHNESS-mean(grid_pts$RICHNESS))/sd(grid_pts$RICHNESS)
+   keep <- vector() # source data values we will keep
+# build a histogram that we can use to bin our standardized data
+h <- hist(abs(unit_sd),plot=F,breaks=30)
+# downsample over-abundant bins to a density consistent with the mean count across bins
+target_count <- round(mean(h$counts[h$counts>0]))
+        bins <- h$mids[h$counts > target_count]
+   bin_width <- h$breaks[2]-h$mids[1]
+for(i in 1:length(bins)){
+  keep <- append(keep,sample(which(unit_sd < bins[i]+bin_width & unit_sd > bins[i]-bin_width),size=target_count))
+}
+
+# now restore all values from the tail of the distribution and parse our grid_pts
+keep <- append(keep,which(unit_sd > bins[length(bins)]+bin_width))
+grid_pts <- grid_pts[keep,]
 
 # write to disk
 cat(" -- writing grid_pts to disk: spp_grid_points_processed.shp")
