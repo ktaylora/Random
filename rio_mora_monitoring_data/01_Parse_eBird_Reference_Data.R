@@ -15,53 +15,54 @@ require(sqldf)
 require(tcltk)
 require(rgdal)
 require(raster)
+require(parallel)
 require(landscapeAnalysis)
 
 # priority species for refuge planning, as mined from Rio Mora's LPP
 priority_spp_four_letter_codes <- c(
   "LOSH",  # loggerhead shrike
-  "LASP",  # lark sparrow
-  "PRFA",  # prairie falcon
-  "PIJA",  # pinyon jay
-  "LBCU",  # long-billed curlew
-  "BUOW",  # burrowing owl
-  "CASP",  # cassin's sparrow
-  "CCLO",  # chestnut-collared longspur
-  "BEVI",  # bell's vireo
-  "GOEA",  # golden eagle
-  "FEHA",  # ferruginous hawk
-  "GRSP",  # grasshopper sparrow
-  "LEWO",  # lewis's woodpecker
-  "MOPL",  # mountain plover
-  "NOHA",  # northern harrier
-  "SPOW",  # spotted owl (Mexican)
-  "PEFA",  # peregrin falcon
-  "SWFL",  # southwestern willow flycatcher
-  "SWHA",  # swainson’s hawk
-  "YEWA"   # yellow warbler
+  # "LASP",  # lark sparrow
+  # "PRFA",  # prairie falcon
+  # "PIJA",  # pinyon jay
+  # "LBCU",  # long-billed curlew
+  # "BUOW",  # burrowing owl
+  "CASP"  # cassin's sparrow
+  # "CCLO",  # chestnut-collared longspur
+  # "BEVI",  # bell's vireo
+  # "GOEA",  # golden eagle
+  # "FEHA",  # ferruginous hawk
+  # "GRSP",  # grasshopper sparrow
+  # "LEWO",  # lewis's woodpecker
+  # "MOPL",  # mountain plover
+  # "NOHA",  # northern harrier
+  # "SPOW",  # spotted owl (Mexican)
+  # "PEFA",  # peregrin falcon
+  # "SWFL",  # southwestern willow flycatcher
+  # "SWHA",  # swainson’s hawk
+  # "YEWA"   # yellow warbler
 )
 
 priority_spp_binomials <- c(
   "laniusludovicianus",       # loggerhead shrike
-  "chondestesgrammacus",      # lark sparrow
-  "falcomexicanus",           # prairie falcon
-  "gymnorhinuscyanocephalus", # pinyon jay
-  "numeniusamericanus",       # long-billed curlew
-  "athenecunicularia",        # burrowing owl
-  "peucaeacassinii",          # cassin's sparrow
-  "calcariusornatus",         # chestnut-collared longspur
-  "vireobellii",              # bell's vireo
-  "aquilachrysaetos",         # golden eagle
-  "buteoregalis",             # ferruginous hawk
-  "ammodramussavannarum",     # grasshopper sparrow
-  "melanerpeslewis",          # lewis's woodpecker
-  "charadriusmontanus",       # mountain plover
-  "circuscyaneus",            # northern harrier
-  "strixoccidentalislucida",  # spotted owl (Mexican)
-  "falcoperegrinus",          # peregrin falcon
-  "empidonaxtrailliiextimus", # southwestern willow flycatcher
-  "buteoswainsoni",           # swainson’s hawk
-  "setophagapetechia"         # yellow warbler
+  # "chondestesgrammacus",      # lark sparrow
+  # "falcomexicanus",           # prairie falcon
+  # "gymnorhinuscyanocephalus", # pinyon jay
+  # "numeniusamericanus",       # long-billed curlew
+  # "athenecunicularia",        # burrowing owl
+  "peucaeacassinii"          # cassin's sparrow
+  # "calcariusornatus",         # chestnut-collared longspur
+  # "vireobellii",              # bell's vireo
+  # "aquilachrysaetos",         # golden eagle
+  # "buteoregalis",             # ferruginous hawk
+  # "ammodramussavannarum",     # grasshopper sparrow
+  # "melanerpeslewis",          # lewis's woodpecker
+  # "charadriusmontanus",       # mountain plover
+  # "circuscyaneus",            # northern harrier
+  # "strixoccidentalislucida",  # spotted owl (Mexican)
+  # "falcoperegrinus",          # peregrin falcon
+  # "empidonaxtrailliiextimus", # southwestern willow flycatcher
+  # "buteoswainsoni",           # swainson’s hawk
+  # "setophagapetechia"         # yellow warbler
 )
 
 #
@@ -70,7 +71,7 @@ priority_spp_binomials <- c(
 
 # if we have an existing dataset, let's use it
 if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))){
-  s <- rgdal::readOGR(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/",sep=""),"pts_2002_2012")
+  s <- rgdal::readOGR(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/",sep=""),"pts_2002_2012",verbose=F)
     s@data <- read.csv(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))
   raster::projection(s) <- CRS(raster::projection("+init=epsg:4326"))
 } else {
@@ -147,6 +148,14 @@ if(sum(!priority_spp_binomials %in% names(s@data))>0){
   priority_spp_four_letter_codes <- priority_spp_four_letter_codes[have]
 }
 
+# sanity-check : make sure there are absences in the ERD to work with -- warn if not
+for(i in 1:length(priority_spp_binomials)){
+  if(min(s[,priority_spp_binomials[i]]@data) != 0){
+    cat(" -- warning: no zero's found for:",priority_spp_four_letter_codes[i], "; adjusting values accordingly. Please check the source ERD for inconsistencies.\n")
+    s@data[,priority_spp_binomials[i]] <- s@data[,priority_spp_binomials[i]]-min(s@data[,priority_spp_binomials[i]])
+  }
+}
+
 # re-grid our original ERD points into a raster stack, then parse the stack back to points,
 # treating the data as presence(1)/absence(0)
 
@@ -158,35 +167,42 @@ grid_pts <- rasterize(s,grid,field=priority_spp_binomials, fun=function(x,na.rm=
 grid_pts$RICHNESS <- rowSums(grid_pts@data)
 
 # sensor eBird observations that occur in urban areas (i.e., population densities > 150 sq-km)
-cat(" -- searching for population density raster: gpw-v4-population-density_2015.tif")
+cat(" -- searching for population density raster: gpw-v4-population-density_2015.tif\n")
 population <- raster(list.files(Sys.getenv("HOME"),pattern="gpw-v4-population-density_2015.tif$",recursive=T,full.names=T)[1])
   population <- landscapeAnalysis::snapTo(population,to=grid)
 
 keep <- extract(population,grid_pts)
   keep[is.na(keep)] <- 151
+
 grid_pts <- grid_pts[keep <= 150,]
 
 # Downsample over-abundant richness "bins" to a consistent density to deal with value inflation
 # In effect, we are sensoring average values of richness and allowing more extreme values to have a greater
-# influence on model fit
+# influence on model fit.
+#
+# sanity-check : make sure we have some heterogeneity in species richness in the first place
+#
 
-# convert RICHNESS to units of standard deviation
-unit_sd <- abs(grid_pts$RICHNESS-mean(grid_pts$RICHNESS))/sd(grid_pts$RICHNESS)
-   keep <- vector() # source data values we will keep
-# build a histogram that we can use to bin our standardized data
-h <- hist(abs(unit_sd),plot=F,breaks=30)
-# downsample over-abundant bins to a density consistent with the mean count across bins
-target_count <- round(mean(h$counts[h$counts>0]))
-        bins <- h$mids[h$counts > target_count]
-   bin_width <- h$breaks[2]-h$mids[1]
-for(i in 1:length(bins)){
-  keep <- append(keep,sample(which(unit_sd < bins[i]+bin_width & unit_sd > bins[i]-bin_width),size=target_count))
+if(length(unique(abs(grid_pts$RICHNESS-mean(grid_pts$RICHNESS)))) > 1){
+  # convert RICHNESS to units of standard deviation
+  unit_sd <- abs(grid_pts$RICHNESS-mean(grid_pts$RICHNESS))/sd(grid_pts$RICHNESS)
+     keep <- vector() # source data values we will keep
+  # build a histogram that we can use to bin our standardized data
+  h <- hist(abs(unit_sd),plot=F,breaks=30)
+  # downsample over-abundant bins to a density consistent with the mean count across bins
+  target_count <- round(mean(h$counts[h$counts>0]))
+          bins <- h$mids[h$counts > target_count]
+     bin_width <- h$breaks[2]-h$mids[1]
+  for(i in 1:length(bins)){
+    keep <- append(keep,sample(which(unit_sd < bins[i]+bin_width & unit_sd > bins[i]-bin_width),size=target_count))
+  }
+  # now restore all values from the tail of the distribution and parse our grid_pts
+  keep <- append(keep,which(unit_sd > bins[length(bins)]+bin_width))
+  grid_pts <- grid_pts[keep,]
+} else {
+  cat(" -- warning: all locations had the same species richness value.  This doesn't bode well for modeling.\n")
 }
 
-# now restore all values from the tail of the distribution and parse our grid_pts
-keep <- append(keep,which(unit_sd > bins[length(bins)]+bin_width))
-grid_pts <- grid_pts[keep,]
-
 # write to disk
-cat(" -- writing grid_pts to disk: spp_grid_points_processed.shp")
+cat(" -- writing grid_pts to disk: spp_grid_points_processed.shp\n")
 writeOGR(grid_pts,".","spp_grid_points_processed", driver="ESRI Shapefile",overwrite=T)
