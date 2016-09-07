@@ -9,10 +9,10 @@
 # Assumes:
 # (1) ERD File: /Incoming/ebird_number_crunching/count_data/erd_us48_data_grouped_by_year_v5.0.tar.gz exists.
 # (2) That somewhere in the user's home directory, a population density raster named gpw-v4-population-density_2015.tif exists
+require(tcltk)
 #
 
 require(sqldf)
-require(tcltk)
 require(rgdal)
 require(raster)
 require(parallel)
@@ -20,46 +20,46 @@ require(landscapeAnalysis)
 
 # priority species for refuge planning, as mined from Rio Mora's LPP
 priority_spp_four_letter_codes <- c(
-  "LOSH",  # loggerhead shrike
+  # "LOSH",  # loggerhead shrike
   # "LASP",  # lark sparrow
-  # "PRFA",  # prairie falcon
+  "PRFA",  # prairie falcon
   # "PIJA",  # pinyon jay
   # "LBCU",  # long-billed curlew
   # "BUOW",  # burrowing owl
-  "CASP"  # cassin's sparrow
+  # "CASP",  # cassin's sparrow
   # "CCLO",  # chestnut-collared longspur
   # "BEVI",  # bell's vireo
-  # "GOEA",  # golden eagle
+  "GOEA",  # golden eagle
   # "FEHA",  # ferruginous hawk
   # "GRSP",  # grasshopper sparrow
   # "LEWO",  # lewis's woodpecker
   # "MOPL",  # mountain plover
   # "NOHA",  # northern harrier
   # "SPOW",  # spotted owl (Mexican)
-  # "PEFA",  # peregrin falcon
+  "PEFA"  # peregrin falcon
   # "SWFL",  # southwestern willow flycatcher
   # "SWHA",  # swainson’s hawk
   # "YEWA"   # yellow warbler
 )
 
 priority_spp_binomials <- c(
-  "laniusludovicianus",       # loggerhead shrike
+  # "laniusludovicianus",       # loggerhead shrike
   # "chondestesgrammacus",      # lark sparrow
-  # "falcomexicanus",           # prairie falcon
+  "falcomexicanus",           # prairie falcon
   # "gymnorhinuscyanocephalus", # pinyon jay
   # "numeniusamericanus",       # long-billed curlew
   # "athenecunicularia",        # burrowing owl
-  "peucaeacassinii"          # cassin's sparrow
+  # "peucaeacassinii",          # cassin's sparrow
   # "calcariusornatus",         # chestnut-collared longspur
   # "vireobellii",              # bell's vireo
-  # "aquilachrysaetos",         # golden eagle
+  "aquilachrysaetos",         # golden eagle
   # "buteoregalis",             # ferruginous hawk
   # "ammodramussavannarum",     # grasshopper sparrow
   # "melanerpeslewis",          # lewis's woodpecker
   # "charadriusmontanus",       # mountain plover
   # "circuscyaneus",            # northern harrier
   # "strixoccidentalislucida",  # spotted owl (Mexican)
-  # "falcoperegrinus",          # peregrin falcon
+  "falcoperegrinus"          # peregrin falcon
   # "empidonaxtrailliiextimus", # southwestern willow flycatcher
   # "buteoswainsoni",           # swainson’s hawk
   # "setophagapetechia"         # yellow warbler
