@@ -22,47 +22,47 @@ require(landscapeAnalysis)
 priority_spp_four_letter_codes <- c(
   # "LOSH",  # loggerhead shrike
   # "LASP",  # lark sparrow
-  "PRFA",  # prairie falcon
+  # "PRFA",  # prairie falcon
   # "PIJA",  # pinyon jay
   # "LBCU",  # long-billed curlew
   # "BUOW",  # burrowing owl
   # "CASP",  # cassin's sparrow
   # "CCLO",  # chestnut-collared longspur
-  # "BEVI",  # bell's vireo
-  "GOEA",  # golden eagle
+  "BEVI",  # bell's vireo
+  # "GOEA",  # golden eagle
   # "FEHA",  # ferruginous hawk
   # "GRSP",  # grasshopper sparrow
   # "LEWO",  # lewis's woodpecker
   # "MOPL",  # mountain plover
-  # "NOHA",  # northern harrier
+  "NOHA",  # northern harrier
   # "SPOW",  # spotted owl (Mexican)
-  "PEFA"  # peregrin falcon
-  # "SWFL",  # southwestern willow flycatcher
+  # "PEFA",  # peregrin falcon
+  "SWFL",  # southwestern willow flycatcher
   # "SWHA",  # swainson’s hawk
-  # "YEWA"   # yellow warbler
+  "YEWA"   # yellow warbler
 )
 
 priority_spp_binomials <- c(
   # "laniusludovicianus",       # loggerhead shrike
   # "chondestesgrammacus",      # lark sparrow
-  "falcomexicanus",           # prairie falcon
+  # "falcomexicanus",           # prairie falcon
   # "gymnorhinuscyanocephalus", # pinyon jay
   # "numeniusamericanus",       # long-billed curlew
   # "athenecunicularia",        # burrowing owl
   # "peucaeacassinii",          # cassin's sparrow
   # "calcariusornatus",         # chestnut-collared longspur
-  # "vireobellii",              # bell's vireo
-  "aquilachrysaetos",         # golden eagle
+  "vireobellii",              # bell's vireo
+  # "aquilachrysaetos",         # golden eagle
   # "buteoregalis",             # ferruginous hawk
   # "ammodramussavannarum",     # grasshopper sparrow
   # "melanerpeslewis",          # lewis's woodpecker
   # "charadriusmontanus",       # mountain plover
-  # "circuscyaneus",            # northern harrier
+  "circuscyaneus",            # northern harrier
   # "strixoccidentalislucida",  # spotted owl (Mexican)
-  "falcoperegrinus"          # peregrin falcon
-  # "empidonaxtrailliiextimus", # southwestern willow flycatcher
+  # "falcoperegrinus",          # peregrin falcon
+  "empidonaxtrailliiextimus", # southwestern willow flycatcher
   # "buteoswainsoni",           # swainson’s hawk
-  # "setophagapetechia"         # yellow warbler
+  "setophagapetechia"         # yellow warbler
 )
 
 #
@@ -72,7 +72,7 @@ priority_spp_binomials <- c(
 # if we have an existing dataset, let's use it
 if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))){
   s <- rgdal::readOGR(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/",sep=""),"pts_2002_2012",verbose=F)
-    s@data <- read.csv(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""))
+    s@data <- read.csv(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_2002_2012.csv",sep=""),stringsAsFactors=F)
   raster::projection(s) <- CRS(raster::projection("+init=epsg:4326"))
 } else {
   # unpack our eBird Reference Data
@@ -126,13 +126,15 @@ if(file.exists(paste(Sys.getenv("HOME"),"/Incoming/ebird_number_crunching/pts_20
 }
 # ERD marks some presences with "checked" or other non-numeric values -- swap them out with 1's
 for(i in 1:ncol(s@data)){
-  x <- as.numeric(s@data[,i]);
+  x <- as.numeric(as.character(s@data[,i]));
     x[is.na(x)] <- 1;
   s@data[,i] <- x
 }
 # re-grid our data onto a 100 x 100 unit surface (or use a grid specified by the user in the CWD)
 if(file.exists("grid.tif")){
+  cat(" -- using existing grid to re-grid eBird reference data: grid.tif\n")
   grid <- raster("grid.tif")
+     s <- spTransform(s,CRS(projection(grid)))
 } else {
   grid <- raster(ext=extent(s),nrows=200,ncols=200,crs=CRS(projection("+init=epsg:4326"))) # arbitrary grid
   # grid <- raster::raster(spTransform(s,CRS(projection("+init=epsg:2163"))),resolution=632,crs="+init=epsg:2163") # grid-cell resolution = mean parcel-size in Mora County
