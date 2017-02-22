@@ -7,18 +7,31 @@ import numpy
 
 from scipy import ndimage
 
-def fn_getma(src_fn, bnum=1, ndv=0):
-    src_ds = gdal.Open(src_fn, gdal.GA_ReadOnly)
-    b = src_ds.GetRasterBand(bnum)
-    b_ndv = b.GetNoDataValue()
-    if (b_ndv is not None):
-        ndv = b_ndv
-    bma = numpy.ma.masked_equal(b.ReadAsArray(), ndv)
-    return bma
+class Raster(object):
+    '''
+    raster
+    '''
+    def __init__(self, **kwargs):
+        self._band = 1
+        self._xmin = None
+        self._x_size = None
+        self._y_size = None
+        self._ymax = None
+        for i, arg in enumerate(kwargs):
+            if arg == "band":
+                self._band = kwargs[arg]
+
+    def np_open(self, file_name=None, ndv=0):
+        src_ds = gdal.Open(file_name, gdal.GA_ReadOnly)
+        b = src_ds.GetRasterBand(self._band)
+        b_ndv = b.GetNoDataValue()
+        if b_ndv is not None:
+            ndv = b_ndv
+        return numpy.ma.masked_equal(b.ReadAsArray(), ndv)
 
 
-def focal(img=None, nrow=1, ncol=1, *args):
-    return ndimage.uniform_filter(img, (nrow, ncol))
+def focal(img=None, *args):
+    return ndimage.uniform_filter(img, (args[0], args[1]))
 
 
 def array_to_raster(array):
@@ -61,6 +74,16 @@ def array_to_raster(array):
 
 
 if __name__ == "__main__":
+    INPUT_RASTER = None
+    WINDOW_DIMS = None
+    TARGET_RECLASS_VALUE = None
     for i in range(0, len(sys.argv)):
-        if (sys.argv[i] == "-r"):
-            r = fn_getma(sys.argv[i + 1])
+        if sys.argv[i] == "-r":
+            INPUT_RASTER = sys.argv[i + 1]
+        elif sys.argv[i] == "-t":
+             TARGET_RECLASS_VALUE = list(map(int,sys.argv[i + 1].split(',')))
+        elif sys.argv[i] == "-mw":
+            print(" -- calculating 1-km average raster")
+            r_1km = focal(img=r, 1000, 1000)
+            print(" -- calculating 5-km average raster")
+            r_5km = focal(img=r, 5000, 5000)
