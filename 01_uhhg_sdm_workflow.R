@@ -574,15 +574,18 @@ invaded_counties <- bTectorumEddmap()
 bromus_tectorum <- parse_gap_training_data("Introduced Upland Vegetation - Annual Grassland", gap=gap, gap_rat=gap_rat)
   bromus_tectorum <- mask_by_boundary(bromus_tectorum, region_boundary=region_boundary_us)
     bromus_tectorum <- mask_by_boundary(bromus_tectorum, region_boundary=invaded_counties) # to mask GAP locations containing non-cg invasive annuals
+
 # merge-in any GBIF training records that are available
 if(class(b_tectorum_gbif$training)!="try-error"){
   bromus_tectorum <- rbind(sp::spTransform(b_tectorum_gbif$training,
                           CRS(projection(bromus_tectorum))), bromus_tectorum)
 }
+
 # generate pseudo-absences in areas unsampled by GAP (Canada + Mexico + Omernik)
 bromus_tectorum <- generate_pseudoabsences(bromus_tectorum,
                                             src_region_boundary=region_boundary_us,
                                             target_region_boundary=region_boundary_non_us)
+                                            
 # write to disk
 writeOGR(bromus_tectorum,"training_data","bromus_tectorum_gap_training_data",driver="ESRI Shapefile", overwrite=T)
 
