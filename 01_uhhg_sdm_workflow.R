@@ -8,32 +8,30 @@
 # Author : Kyle Taylor (kyle.taylor@uwyo.edu) [2014] (https://github.com/ktaylora)
 #
 
-library("foreign")
+include <- function(x,from="cran",repo=NULL){
+  if(from == "cran"){
+    if(!do.call(require,as.list(x))) install.packages(x, repos=c("http://cran.revolutionanalytics.com","http://cran.us.r-project.org"));
+    if(!do.call(require,as.list(x))) stop("auto installation of package ",x," failed.\n")
+  } else if(from == "github"){
+    if(!do.call(require,as.list(x))){
+      if(!do.call(require,as.list('devtools'))) install.packages('devtools', repos=c("http://cran.revolutionanalytics.com","http://cran.us.r-project.org"));
+      require('devtools');
+      install_github(paste(repo,x,sep="/"));
+    }
+  } else{
+    stop(paste("could find package:",x))
+  }
+}
 
-if (!require("raster")){
-  install.packages("raster", repos = "https://cran.revolutionanalytics.com")
-  library("raster")
-}
-if (!require("rgdal")){
-  install.packages("rgdal", repos = "https://cran.revolutionanalytics.com")
-  library("rgdal")
-}
-if (!require("randomForest")){
-  install.packages("randomForest", repos = "https://cran.revolutionanalytics.com")
-  library("randomForest")
-}
-if (!require("rfUtilities")){
-  install.packages("rfUtilities", repos = "https://cran.revolutionanalytics.com")
-  library("rfUtilities")
-}
-if (!require("rvest")){
-  install.packages("rvest", repos = "https://cran.revolutionanalytics.com")
-  library("rvest")
-}
-if (!require("rgeos")){
-  install.packages("rvest", repos = "https://cran.revolutionanalytics.com")
-  library("rgeos")
-}
+include("foreign")
+include("raster")
+include("rgdal")
+include("rgeos")
+include("randomForest")
+include("rfUtilities")
+include("rvest")
+
+
 #' attempts to download and unpack a gbif herbarium dataset, by fixed session ID
 gbifFetchAndUnpack <- function(gbifID=NULL){
   if(!file.exists(file.path(paste("herbarium_records/",gbifID,".csv",sep="")))){
@@ -132,8 +130,32 @@ parse_url <- function(x=NULL){
                 ))
 }
 #' scrape EDDMaps counties for latest bromus tectorum data
-scrapeEddmapsData <- function(x){
-  return(NA)
+scrapeEddmapsData <- function(base_url="https://goo.gl/375Nb7"){
+  # hack ...
+  return("http://bigbeatbox.duckdns.org/b_tectorum_eddmaps.zip")
+}
+fetchAndProcessEddmap <- function(url){
+  download.file(url, destfil=file.path("boundaries/b_tectorum_edds_counties.zip"))
+  unzip("boundaries/b_tectorum_edds_counties.zip",exdir="boundaries/eddmaps")
+}
+#'
+bTectorumEddmap <- function(){
+  if(!dir.exists("boundaries/eddmaps")){
+    fetchAndProcessEddmap(scrapeEddmapsData())
+  }
+  if(!dir.exists("boundaries/counties")){
+    dir.create("boundaries/counties")
+    counties <- scrapeUsBoundaries(pattern="us_county_500k")
+      download.file(counties,destfile=file.path("boundaries/counties/counties.zip"))
+        unzip(file.path("boundaries/counties/counties.zip"),exdir="boundaries/counties")
+  }
+  # point in polygon
+  counties  <- readOGR("boundaries/counties/","cb_2015_us_county_500k",verbose=F)
+    cg_points <- sp::spTransform(rgdal::readOGR("boundaries/eddmaps", "points",verbose=F), CRS(projection(counties)))
+      over <- sp::over(counties,cg_points)[,1]
+  # punt
+  counties@data <- data.frame(response=!is.na(over))
+  return(counties)
 }
 #' scrape TIGER for us boundary
 scrapeUsBoundaries <- function(base_url="http://www2.census.gov/geo/tiger/GENZ2015/shp/", pattern="us_state_500k"){
@@ -223,6 +245,48 @@ worldclimFetchAndUnpack <- function(urls=NULL){
     unzip(file.path(paste("climate_data",i,sep="/")),exdir="climate_data")
   }
 }
+#' return a RasterStack of worldclim data, parsed by flags and/or pattern
+worldclimStack <- function(vars=NULL, time=NULL, bioclim=T, climate=F, pattern=NULL){
+  all_vars <- list.files("climate_data",pattern="bil$|tif$", full.names=T)
+  climate_flags <- vector()
+  if(grepl(tolower(time), pattern="cur")){
+    all_vars <- grep_by(all_vars, pattern="bil$") # current climate data are always .bil files
+  } else if(grepl(as.character(time),pattern="50")){
+    all_vars <- grep_by(all_vars, pattern=".50.")
+  } else if(grepl(as.character(time),pattern="70")){
+    all_vars <- grep_by(all_vars, pattern=".70.")
+  }
+  if(bioclim){
+    climate_flags <- append(climate_flags,"bi")
+  }
+  if(climate){
+    climate_flags <- append(climate_flags,"temp|prec")
+  }
+
+  all_vars <- grep_by(all_vars, pattern=paste(climate_flags,collapse="|"))
+
+  if(!is.null(vars)){
+    # parse out weird worldclim var formating (differs by time scenario)
+    if(grepl(tolower(time), pattern="cur")){
+      v <- unlist(lapply(strsplit(all_vars,split="/"), FUN=function(x){x[length(x)]}))
+      v <- lapply(strsplit(v,split="_"),FUN=function(x){x[length(x)]})
+      v <- as.numeric(gsub(v, pattern=".bil", replacement=""))
+        all_vars <- all_vars[ v %in% vars ]
+    } else if(grepl(tolower(time), pattern="50|70")){
+      split <- gsub(as.character(time), pattern="20", replacement="")
+      v <- unlist(lapply(strsplit(all_vars,split="/"), FUN=function(x){x[length(x)]}))
+      v <- lapply(strsplit(v,split=split),FUN=function(x){x[length(x)]})
+      v <- as.numeric(gsub(v, pattern=".tif", replacement=""))
+        all_vars <- all_vars[ v %in% vars ]
+    }
+  }
+  # any final custom grep strings passed?
+  if(!is.null(pattern)){
+    all_vars <- grep_by(all_vars, pattern=pattern)
+  }
+
+  raster::stack(all_vars)
+}
 #' will reclassify and downsample a gap dataset to a reasonable density (arbitrary total landscape * 0.002%)
 #' and make a randomized stratification vector of community-level presence/absence for a focal
 #' species.
@@ -299,29 +363,6 @@ generate_pseudoabsences <- function(s=NULL, src_region_boundary=NULL, target_reg
 ################################################################################
 
 #
-# fetch our explanatory climate data
-#
-
-# GCM's selected to maximise the range of predictions for temperature/precipitation
-# made across all available scenarios/models for the inter-mountain region.
-# See VisTrails-SAHM documentation for an overview.
-gcm_abbrevs  <- c("ac","gf","in","ip")
-time_periods <- c("current","50","70")
-
-dir.create("climate_data")
-
-urls <- scrapeWorldclimCmip5(models=gcm_abbrevs,
-                             bioclim=T,
-                             start_of_century=sum(grepl(time_periods,pattern="current")),
-                             mid_century=sum(grepl(time_periods,pattern="50")),
-                             end_of_century=sum(grepl(time_periods,pattern="70")),
-                             scen_45=TRUE,
-                             scen_85=TRUE
-                            )
-
-worldclimFetchAndUnpack(urls)
-
-#
 # fetch and read-in omernik ecoregions, national boundaries, and county-level bromus tectorum
 # data to 1.) mask relavent GAP observations and 2.) define our absense space (minding the naughty-naughts)
 # [https://www.jstor.org/stable/3683828]
@@ -329,6 +370,7 @@ worldclimFetchAndUnpack(urls)
 
 # pre-define climate and topographic conditions thought to be limiting to big sagebrush,
 # but still inclusive of our occurrence data (SEMIARID HIGHLANDS)
+
 study_region_levels <- c("NORTH AMERICAN DESERTS",
                          "MEDITERRANEAN CALIFORNIA",
                          "SOUTHERN SEMIARID HIGHLANDS",
@@ -364,10 +406,39 @@ region_boundary_us <- rgeos::gIntersection(us_boundary,
                                                           ))
 # for generating non-us pseudo-absences at ecological boundaries (~mexico/canada)
 region_boundary_non_us <- rgeos::gDifference(region_boundary, sp::spTransform(us_boundary, CRS(projection(region_boundary)))) # mask out our gap sample space (us boundary)
-full_study_region      <- rgeos::gUnion(region_boundary_us, sp::spTransform(region_boundary, CRS(projection(region_boundary))))
+full_study_region      <- rgeos::gUnion(region_boundary_us, sp::spTransform(region_boundary, CRS(projection(region_boundary_us))))
   writeOGR(SpatialPolygonsDataFrame(full_study_region, data=data.frame(id=1)),
                                     "boundaries", "full_study_region_extent",
                                     driver="ESRI Shapefile", overwrite=T)
+
+#
+# fetch our explanatory climate data
+#
+
+# GCM's selected to maximise the range of predictions for temperature/precipitation
+# made across all available scenarios/models for the inter-mountain region.
+# See VisTrails-SAHM documentation for an overview.
+
+gcm_abbrevs  <- c("ac","gf","in","ip")
+bioclim_vars <- c(1,2,3,4,5) # variables selected from previous work w/ big sagebrush SDM outlined in Schlaepfer et al., 2012.
+
+dir.create("climate_data")
+
+urls <- scrapeWorldclimCmip5(models=gcm_abbrevs,
+                             bioclim=T,
+                             start_of_century=sum(grepl(time_periods,pattern="current")),
+                             mid_century=sum(grepl(time_periods,pattern="50")),
+                             end_of_century=sum(grepl(time_periods,pattern="70")),
+                             scen_45=TRUE,
+                             scen_85=TRUE
+                            )
+
+worldclimFetchAndUnpack(urls)
+
+climate_conditions_current <- worldclimStack(vars=bioclim_vars, bioclim=T, time="current")
+climate_conditions_2050    <- worldclimStack(vars=bioclim_vars, bioclim=T, time=2050, pattern=paste(gcm_abbrevs,collapse="|"))
+climate_conditions_2070    <- worldclimStack(vars=bioclim_vars, bioclim=T, time=2070, pattern=paste(gcm_abbrevs,collapse="|")))
+
 
 #
 # Read-in gbif herbarium records
@@ -497,10 +568,23 @@ ssp_vaseyana <- ssp_vaseyana[!duplicated(ssp_vaseyana@coords),]
 writeOGR(ssp_vaseyana,"training_data","ssp_vaseyana_gap_training_data",driver="ESRI Shapefile", overwrite=T)
 
 cat(" -- b. tectorum...\n")
+invaded_counties <- bTectorumEddmap()
+  invaded_counties <- invaded_counties[invaded_counties$response ==1,]
+
 bromus_tectorum <- parse_gap_training_data("Introduced Upland Vegetation - Annual Grassland", gap=gap, gap_rat=gap_rat)
   bromus_tectorum <- mask_by_boundary(bromus_tectorum, region_boundary=region_boundary_us)
-  # mask our GAP data against county-level EDDSmap data
-  #writeOGR(bromus_tectorum,"training_data","bromus_tectorum_gap_training_data",driver="ESRI Shapefile")
+    bromus_tectorum <- mask_by_boundary(bromus_tectorum, region_boundary=invaded_counties) # to mask GAP locations containing non-cg invasive annuals
+# merge-in any GBIF training records that are available
+if(class(b_tectorum_gbif$training)!="try-error"){
+  bromus_tectorum <- rbind(sp::spTransform(b_tectorum_gbif$training,
+                          CRS(projection(bromus_tectorum))), bromus_tectorum)
+}
+# generate pseudo-absences in areas unsampled by GAP (Canada + Mexico + Omernik)
+bromus_tectorum <- generate_pseudoabsences(bromus_tectorum,
+                                            src_region_boundary=region_boundary_us,
+                                            target_region_boundary=region_boundary_non_us)
+# write to disk
+writeOGR(bromus_tectorum,"training_data","bromus_tectorum_gap_training_data",driver="ESRI Shapefile", overwrite=T)
 
 
 # extract our climate data
