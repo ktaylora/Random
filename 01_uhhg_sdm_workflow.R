@@ -207,6 +207,22 @@ scrapeWorldclimCmip5 <- function(base_url="http://worldclim.org/cmip5_30s",
   # return URLs to user
   return(unlist(lapply(hrefs, FUN = parse_url)))
 }
+#' unpack climate data
+worldclimFetchAndUnpack <- function(urls=NULL){
+  climate_zips <- unlist(lapply(strsplit(urls,split="/"),FUN=function(x){return(x[length(x)])}))
+  if( sum( climate_zips %in% list.files("climate_data") ) != length(climate_zips) ){
+    cat(" -- fetching missing climate data\n")
+    missing <- which(!(climate_zips %in% list.files("climate_data")))
+    for(i in missing){
+      download.file(urls[i],destfile=file.path(paste("climate_data",climate_zips[i],sep="/")))
+    }
+  }
+  if(sum( list.files( file.path(paste("climate_data/",gsub(climate_zips, pattern=".zip",replacement="*.tif"))) ))
+  cat(" -- unpacking climate data\n")
+  for(i in climate_zips){
+    unzip(file.path(paste("climate_data",i,sep="/")),exdir="climate_data")
+  }
+}
 #' will reclassify and downsample a gap dataset to a reasonable density (arbitrary total landscape * 0.002%)
 #' and make a randomized stratification vector of community-level presence/absence for a focal
 #' species.
@@ -270,10 +286,10 @@ generate_pseudoabsences <- function(s=NULL, src_region_boundary=NULL, target_reg
   if(target_pts_upsampled < pts_to_generate){
     warning("To keep consistent sampling density we had to under-sample in our target region. Check for class imbalances.")
   } else {
-    target_pts_upsampled <- pts_generated[sample(1:nrow(pts_generated),size=pts_to_generate),]
+    pts_generated <- pts_generated[sample(1:nrow(pts_generated),size=pts_to_generate),]
   }
 
-  return(rbind(s,target_pts_upsampled))
+  return(rbind(s,pts_generated))
 }
 
 ################################################################################
@@ -303,6 +319,7 @@ urls <- scrapeWorldclimCmip5(models=gcm_abbrevs,
                              scen_85=TRUE
                             )
 
+worldclimFetchAndUnpack(urls)
 
 #
 # fetch and read-in omernik ecoregions, national boundaries, and county-level bromus tectorum
@@ -420,7 +437,9 @@ gap <- raster::crop(gap, sp::spTransform(us_boundary,raster::projection(gap)))
 # herbarium records to augment data at regional boundaries (Canada/Mexico) and as a validation
 # dataset to test predictive accuracy. I assume that if our GAP trained model is a poor predictor
 # of subspecies occurrence/absence, that it will evaluate poorly when validated against our herbarium
-# record hold-out data.
+# record hold-out data. In the future, we might consider record weighting (e.g., Random Forest), or
+# model averaging / data augmentation (such as with HB) across both datasets. The current approach
+# is intuitive and will work well for now.
 #
 
 cat(" -- performing a binary reclassification of GAP explanatory data for our (sub)species of interest\n")
@@ -484,6 +503,4 @@ bromus_tectorum <- parse_gap_training_data("Introduced Upland Vegetation - Annua
   #writeOGR(bromus_tectorum,"training_data","bromus_tectorum_gap_training_data",driver="ESRI Shapefile")
 
 
-
-
-# process our herbarium records (for augmentation at us boundary and validation)
+# extract our climate data
