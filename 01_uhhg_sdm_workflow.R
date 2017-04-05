@@ -2,7 +2,7 @@
 # WORKFLOW : Big Sagebrush Subspecies and Invasive Brome Climate SDMs
 #
 # This is a full-run generating content outlined in chapters 2/3 of my thesis. I wrote
-# on a unix machine. You may need to switch "/" with "\" where I slip-up if
+# on a unix machine. You may need to switch "/" with "\" in paths where I slip-up if
 # you are running this on windows.
 #
 # Author : Kyle Taylor (kyle.taylor@uwyo.edu) [2014] (https://github.com/ktaylora)
@@ -19,7 +19,7 @@ include <- function(x,from="cran",repo=NULL){
       install_github(paste(repo,x,sep="/"));
     }
   } else{
-    stop(paste("could find package:",x))
+    stop(paste("couldn't find package:", x))
   }
 }
 
@@ -30,7 +30,6 @@ include("rgeos")
 include("randomForest")
 include("rfUtilities")
 include("rvest")
-
 
 #' attempts to download and unpack a gbif herbarium dataset, by fixed session ID
 gbifFetchAndUnpack <- function(gbifID=NULL){
@@ -152,7 +151,8 @@ bTectorumEddmap <- function(){
   # point in polygon
   counties  <- readOGR("boundaries/counties/","cb_2015_us_county_500k",verbose=F)
     cg_points <- sp::spTransform(rgdal::readOGR("boundaries/eddmaps", "points",verbose=F), CRS(projection(counties)))
-      over <- sp::over(counties,cg_points)[,1]
+      cg_points <- rgeos::gBuffer(cg_points,width=0.6,byid=T) #we need to buffer to re-create the map
+  over <- sp::over(counties,cg_points)[,1]
   # punt
   counties@data <- data.frame(response=!is.na(over))
   return(counties)
@@ -355,6 +355,98 @@ generate_pseudoabsences <- function(s=NULL, src_region_boundary=NULL, target_reg
 
   return(rbind(s,pts_generated))
 }
+#' generate in/outsample (rows) from a data.frame, t=
+genInOutSample <- function(t=NULL,size=0.2){
+  ret <- vector("list",2)
+  ret[[2]] <- sample(1:nrow(t),size=nrow(t)*size)
+  ret[[1]] <- which(!(1:nrow(t) %in% ret[[2]]))
+  names(ret) <- c("out_sample","in_sample")
+  return(ret)
+}
+#' accepts a Random Forest model object, reports it's internal (OOB) validation statistics
+#' and then evaluates using an external validation dataset of your choosing
+reportValidation <- function(m,t){
+  cat(" -- confusion matrix (OOB):\n")
+  print(m$confusion)
+  if(length(t$response)/length(m$y) < 0.2 ){
+    cat(" -- warning holdout dataset is less-than 20% of the size of the training dataset\n")
+  }
+  cat(" -- accuracy vs holdout : ",sum(predict(m,t) == t$response,na.rm=T)/length(t$response),"\n")
+}
+#' fit a Random Forest and validate using herbarium presences and GAP holdout
+fitAndValidate <- function(main=NULL, s=NULL, s_holdout=NULL){
+  if(!is.null(main)) cat(paste(" -- model fitting for ",main,":\n",sep=""))
+  sample <- genInOutSample(t=s@data)
+  m <- randomForest(as.factor(response)~.,data=na.omit(s@data[sample$in_sample,]),do.trace=F)
+    reportValidation(m,s_holdout@data)
+    reportValidation(m,s@data[sample$out_sample,])
+  return(m)
+}
+#' ~ghetto gaussian feature extraction for raster predictions. not currently used
+featureExtractionContour <- function(r=NULL){
+  suitability_contour <- focal(suitability_current,fun=mean,w=matrix(1,nrow=3,ncol=3))
+  suitability_contour <- focal(suitability_contour,fun=mean,w=matrix(1,nrow=11,ncol=11))
+  suitability_contour <- focal(suitability_contour,fun=mean,w=matrix(1,nrow=33,ncol=33))
+    raster::rasterToContour(suitability_contour)
+}
+#' re-scale (normalize) proportional votes to "probability" based on predictions made across the entire region. Usually
+#' not needed (i.e., when our proportional votes have a min/max of 0/1), but sometimes it is (see also: 'rfUtilities'). We
+#' optionally take the inverse of the current prediction, because raster::predict doesn't support selecting focal class
+#' when working with raster objects, which means that all of our model predictions will default to probability of absence, rather than probability
+#' of occurrence.
+scale.dist <- function(d, invert=T) {
+  if(invert){
+    d <- cellStats(d,"max",na.rm=T) - d
+  }
+  return( ( d - cellStats(d,"min",na.rm=T) )/( cellStats(d,"max",na.rm=T) - cellStats(d,"min",na.rm=T) ) )
+}
+#' rename raster stack vars from e.g. "ipbio504" to the "bio_4" strings models "see" under current climate
+#' conditions worldclim rasters
+namesToBioclim <- function(r, prefix="bio_", split_pattern="bio50"){
+  n <- paste(prefix,unlist(lapply(strsplit(names(r),split=split_pattern),FUN=function(x){ return(x[2]) })),sep="")
+  names(r) <- n
+    return(r)
+}
+#' use grep splitting to slice and project across a worldclim raster stack
+projectModelAcrossGCMs <- function(m=NULL,r=NULL, split_pattern="bi50",rcp="45"){
+  gcms <- vector("list",length(gcm_abbrevs))
+    names(gcms) <- gcm_abbrevs
+  cat(paste(" -- projecting across GCM's [",paste(gcm_abbrevs,collapse=","),"]\n",sep=""))
+  for(i in 1:length(gcms)){
+    focal <- subset(r,names(r)[grepl(names(r),pattern=gcm_abbrevs[i])])
+    focal <- subset(focal,names(focal)[grepl(names(focal),pattern=rcp)])
+    focal <- namesToBioclim(focal, split_pattern=split_pattern)
+    gcms[[i]] <- predict(focal, m, type="prob", progress='text')
+  }
+  return(gcms)
+}
+#' this is getting a little hackish. returns a list-of-lists
+#' with aggregate statistics calculated across our predictive surfaces
+projectModelByYearAndScenario <- function(spp=NULL,m=NULL,year=c("50","70"),rcps=c("45","85")){
+  ret <- vector("list", 8)
+  j <- 1
+  for(y in year){
+    for(pathway in rcps){
+      mean_sd <- vector("list",2);
+        names(mean_sd) <- c("mean","sd")
+      i  <- projectModelAcrossGCMs(m=m, r=get(paste("climate_conditions_20",y,sep="")), split_pattern=y, rcp=pathway)
+      ret[[j]]   <- stackApply(stack(i),fun=mean,na.rm=T,indices=1)
+        names(ret[[j]]) <- paste(y,pathway,"mean",sep="_")
+      ret[[j+1]] <- stackApply(stack(i),fun=sd,na.rm=T,indices=1)
+        names(ret[[j+1]]) <- paste(y,pathway,"sd",sep="_")
+      j <- j+2
+    }
+  }
+  return(ret)
+}
+#' wrapper for writeRaster that can comprehend our raster hodge-podge
+saveRasters <- function(prefix=NULL, x=NULL){
+  dir.create("rasters")
+  for(n in names(x)){ # e.g., c("2050_45","2050_85","2070_45","2070_85")
+    raster::writeRaster(x[n]$mean, file.path(paste("rasters/",prefix,"_",n,".tif",sep="")), progress='text')
+    raster::writeRaster(x[n]$sd, file.path(paste("rasters/",prefix,"_",n,"_sd.tif",sep="")), progress='text')
+  }
+}
 
 ################################################################################
 ##
@@ -415,12 +507,15 @@ full_study_region      <- rgeos::gUnion(region_boundary_us, sp::spTransform(regi
 # fetch our explanatory climate data
 #
 
+cat(" -- fetching / cropping / reading worldclim data\n")
+
 # GCM's selected to maximise the range of predictions for temperature/precipitation
 # made across all available scenarios/models for the inter-mountain region.
 # See VisTrails-SAHM documentation for an overview.
 
 gcm_abbrevs  <- c("ac","gf","in","ip")
-bioclim_vars <- c(1,2,3,4,5) # variables selected from previous work w/ big sagebrush SDM outlined in Schlaepfer et al., 2012.
+bioclim_vars <- c(3,4,11,15,18) # variables selected from previous work w/ big sagebrush SDM outlined in Schlaepfer et al., 2012.
+time_periods <- c("current","2050","2070")
 
 dir.create("climate_data")
 
@@ -436,9 +531,11 @@ urls <- scrapeWorldclimCmip5(models=gcm_abbrevs,
 worldclimFetchAndUnpack(urls)
 
 climate_conditions_current <- worldclimStack(vars=bioclim_vars, bioclim=T, time="current")
+  climate_conditions_current <- raster::crop(climate_conditions_current,sp::spTransform(full_study_region,CRS(projection(climate_conditions_current))))
 climate_conditions_2050    <- worldclimStack(vars=bioclim_vars, bioclim=T, time=2050, pattern=paste(gcm_abbrevs,collapse="|"))
-climate_conditions_2070    <- worldclimStack(vars=bioclim_vars, bioclim=T, time=2070, pattern=paste(gcm_abbrevs,collapse="|")))
-
+  climate_conditions_2050 <- raster::crop(climate_conditions_2050,sp::spTransform(full_study_region,CRS(projection(climate_conditions_2050))))
+climate_conditions_2070    <- worldclimStack(vars=bioclim_vars, bioclim=T, time=2070, pattern=paste(gcm_abbrevs,collapse="|"))
+  climate_conditions_2070 <- raster::crop(climate_conditions_2070,sp::spTransform(full_study_region,CRS(projection(climate_conditions_2070))))
 
 #
 # Read-in gbif herbarium records
@@ -518,52 +615,66 @@ if(sum(grepl(names(gap_rat),pattern="ECOLSYS_LU"))==0) stop("couldn't find ECOLS
 
 cat(" -- a. tridentata ssp tridentata...\n")
 ssp_tridentata <- parse_gap_training_data("Inter-Mountain Basins Big Sagebrush Shrubland", gap=gap, gap_rat=gap_rat)
-  ssp_tridentata <- mask_by_boundary(ssp_tridentata, region_boundary=region_boundary_us) # (US + Omernik)
+  writeOGR(ssp_tridentata,"training_data","ssp_tridentata_gap_source_data",driver="ESRI Shapefile", overwrite=T)
+
+ssp_tridentata <- mask_by_boundary(ssp_tridentata, region_boundary=region_boundary_us) # (US + Omernik)
+
 # merge-in any GBIF training records that are available
 if(class(ssp_tridentata_gbif$training)!="try-error"){
   ssp_tridentata <- rbind(sp::spTransform(ssp_tridentata_gbif$training,
                           CRS(projection(ssp_tridentata))), ssp_tridentata)
 }
+
 # generate pseudo-absences in areas unsampled by GAP (Canada + Mexico + Omernik)
 ssp_tridentata <- generate_pseudoabsences(ssp_tridentata,
                                           src_region_boundary=region_boundary_us,
                                           target_region_boundary=region_boundary_non_us)
 # dupe check
 ssp_tridentata <- ssp_tridentata[!duplicated(ssp_tridentata@coords),]
+
 # write to disk for validation
 writeOGR(ssp_tridentata,"training_data","ssp_tridentata_gap_training_data",driver="ESRI Shapefile",overwrite=T)
 
 cat(" -- a. tridentata ssp wyomingensis...\n")
 ssp_wyomingensis <- parse_gap_training_data("Inter-Mountain Basins Big Sagebrush Steppe", gap=gap, gap_rat=gap_rat)
-  ssp_wyomingensis <- mask_by_boundary(ssp_wyomingensis, region_boundary=region_boundary_us)
+  writeOGR(ssp_wyomingensis,"training_data","ssp_wyomingensis_gap_source_data",driver="ESRI Shapefile", overwrite=T)
+ssp_wyomingensis <- mask_by_boundary(ssp_wyomingensis, region_boundary=region_boundary_us)
+
 # merge-in any GBIF training records that are available
 if(class(ssp_wyomingensis_gbif$training)!="try-error"){
   ssp_wyomingensis <- rbind(sp::spTransform(ssp_wyomingensis_gbif$training,
                           CRS(projection(ssp_wyomingensis))), ssp_wyomingensis)
 }
+
 # generate pseudo-absences in areas unsampled by GAP (Canada + Mexico + Omernik)
 ssp_wyomingensis <- generate_pseudoabsences(ssp_wyomingensis,
                                             src_region_boundary=region_boundary_us,
                                             target_region_boundary=region_boundary_non_us)
 # dupe check
 ssp_wyomingensis <- ssp_wyomingensis[!duplicated(ssp_wyomingensis@coords),]
+
 # write to disk for validation
 writeOGR(ssp_wyomingensis,"training_data","ssp_wyomingensis_gap_training_data",driver="ESRI Shapefile", overwrite=T)
 
 cat(" -- a. tridentata ssp vaseyana...\n")
 ssp_vaseyana <- parse_gap_training_data("Inter-Mountain Basins Montane Sagebrush Steppe", gap=gap, gap_rat=gap_rat)
+
+writeOGR(bromus_tectorum,"training_data","ssp_vaseyana_gap_source_data",driver="ESRI Shapefile", overwrite=T)
   ssp_vaseyana <- mask_by_boundary(ssp_vaseyana, region_boundary=region_boundary_us)
+
 # merge-in any GBIF training records that are available
 if(class(ssp_vaseyana_gbif$training)!="try-error"){
   ssp_vaseyana <- rbind(sp::spTransform(ssp_vaseyana_gbif$training,
                           CRS(projection(ssp_vaseyana))), ssp_vaseyana)
 }
+
 # generate pseudo-absences in areas unsampled by GAP (Canada + Mexico + Omernik)
 ssp_vaseyana <- generate_pseudoabsences(ssp_vaseyana,
                                         src_region_boundary=region_boundary_us,
                                         target_region_boundary=region_boundary_non_us)
 # dupe check
 ssp_vaseyana <- ssp_vaseyana[!duplicated(ssp_vaseyana@coords),]
+
 # write to disk for validation
 writeOGR(ssp_vaseyana,"training_data","ssp_vaseyana_gap_training_data",driver="ESRI Shapefile", overwrite=T)
 
@@ -572,8 +683,11 @@ invaded_counties <- bTectorumEddmap()
   invaded_counties <- invaded_counties[invaded_counties$response ==1,]
 
 bromus_tectorum <- parse_gap_training_data("Introduced Upland Vegetation - Annual Grassland", gap=gap, gap_rat=gap_rat)
-  bromus_tectorum <- mask_by_boundary(bromus_tectorum, region_boundary=region_boundary_us)
-    bromus_tectorum <- mask_by_boundary(bromus_tectorum, region_boundary=invaded_counties) # to mask GAP locations containing non-cg invasive annuals
+writeOGR(bromus_tectorum,"training_data","bromus_tectorum_gap_source_data",driver="ESRI Shapefile", overwrite=T)
+presences <- bromus_tectorum[bromus_tectorum$response==1,]
+  presences <- mask_by_boundary(presences, region_boundary=invaded_counties) # mask GAP presence locations containing non-cg invasive annuals
+bromus_tectorum <- rbind(presences,bromus_tectorum[bromus_tectorum$response==0,])
+  rm(presences)
 
 # merge-in any GBIF training records that are available
 if(class(b_tectorum_gbif$training)!="try-error"){
@@ -581,13 +695,74 @@ if(class(b_tectorum_gbif$training)!="try-error"){
                           CRS(projection(bromus_tectorum))), bromus_tectorum)
 }
 
+# mask out observations made outside of western north america
+over <- !is.na(sp::over(bromus_tectorum,full_study_region))
+  bromus_tectorum <- bromus_tectorum[over,]
+
 # generate pseudo-absences in areas unsampled by GAP (Canada + Mexico + Omernik)
 bromus_tectorum <- generate_pseudoabsences(bromus_tectorum,
                                             src_region_boundary=region_boundary_us,
                                             target_region_boundary=region_boundary_non_us)
-                                            
+
 # write to disk
 writeOGR(bromus_tectorum,"training_data","bromus_tectorum_gap_training_data",driver="ESRI Shapefile", overwrite=T)
 
-
 # extract our climate data
+        ssp_tridentata <- raster::extract(climate_conditions_current,ssp_tridentata,sp=T)
+ssp_tridentata_holdout <- raster::extract(climate_conditions_current,ssp_tridentata_gbif$holdout,sp=T)
+
+        ssp_wyomingensis <- raster::extract(climate_conditions_current,ssp_wyomingensis,sp=T)
+ssp_wyomingensis_holdout <- raster::extract(climate_conditions_current,ssp_wyomingensis_gbif$holdout,sp=T)
+
+        ssp_vaseyana <- raster::extract(climate_conditions_current,ssp_vaseyana,sp=T)
+ssp_vaseyana_holdout <- raster::extract(climate_conditions_current,ssp_vaseyana_gbif$holdout,sp=T)
+
+        bromus_tectorum <- raster::extract(climate_conditions_current,bromus_tectorum,sp=T)
+bromus_tectorum_holdout <- raster::extract(climate_conditions_current,b_tectorum_gbif$holdout,sp=T)
+
+# fit our random forest models
+
+# ssp_wyomingensis_suitability_2050_rcp45  <- projectModelAcrossGCMs(m=m_wyomingensis, r=climate_conditions_2050, split_pattern="50",rcp="45")
+# ssp_wyomingensis_suitability_2050_rcp45_mean <- stackApply(stack(ssp_wyomingensis_suitability_2050),fun=sd,na.rm=T,indices=1)
+# ssp_wyomingensis_suitability_2050_rcp45_sd <- stackApply(stack(ssp_wyomingensis_suitability_2050),fun=sd,na.rm=T,indices=1)
+#
+# ssp_wyomingensis_suitability_2050_rcp85  <- projectModelAcrossGCMs(m=m_wyomingensis, r=climate_conditions_2050, split_pattern="50",rcp="85")
+# ssp_wyomingensis_suitability_2050_rcp85_mean <- stackApply(stack(ssp_wyomingensis_suitability_2050),fun=sd,na.rm=T,indices=1)
+# ssp_wyomingensis_suitability_2050_rcp85_sd <- stackApply(stack(ssp_wyomingensis_suitability_2050),fun=sd,na.rm=T,indices=1)
+#
+# ssp_wyomingensis_suitability_2070_rcp45  <- projectModelAcrossGCMs(m=m_wyomingensis, r=climate_conditions_2070, split_pattern="70",rcp="45")
+# ssp_wyomingensis_suitability_2070_rcp45_mean <- stackApply(stack(ssp_wyomingensis_suitability_2070),fun=sd,na.rm=T,indices=1)
+# ssp_wyomingensis_suitability_2070_rcp45_sd <- stackApply(stack(ssp_wyomingensis_suitability_2070),fun=sd,na.rm=T,indices=1)
+#
+# ssp_wyomingensis_suitability_2070_rcp85  <- projectModelAcrossGCMs(m=m_wyomingensis, r=climate_conditions_2070, split_pattern="70",rcp="85")
+# ssp_wyomingensis_suitability_2070_rcp85_mean <- stackApply(stack(ssp_wyomingensis_suitability_2070),fun=sd,na.rm=T,indices=1)
+# ssp_wyomingensis_suitability_2070_rcp85_sd <- stackApply(stack(ssp_wyomingensis_suitability_2070),fun=sd,na.rm=T,indices=1)
+
+# fit our Random Forest models
+m_tridentata      <- fitAndValidate(main="ssp. tridentata", s=ssp_tridentata, s_holdout=ssp_tridentata_holdout)
+m_wyomingensis    <- fitAndValidate(main="ssp. wyomingensis", s=ssp_wyomingensis, s_holdout=ssp_wyomingensis_holdout)
+m_vaseyana        <- fitAndValidate(main="ssp. vaseyana", s=ssp_vaseyana, s_holdout=ssp_vaseyana_holdout)
+m_bromus_tectorum <- fitAndValidate(main="bromus tectorum")
+
+# project out as rasters
+cat(" -- projecting models across current climate conditions:\n")
+ssp_tridentata_suitability_current   <- scale.dist(predict(climate_conditions_current, m_tridentata, type="prob", progress='text'))
+ssp_wyomingensis_suitability_current <- scale.dist(predict(climate_conditions_current, m_wyomingensis, type="prob", progress='text'))
+ssp_vaseyana_suitability_current     <- scale.dist(predict(climate_conditions_current, m_vaseyana, type="prob", progress='text'))
+bromus_tectorum_suitability_current  <- scale.dist(predict(climate_conditions_current, m_bromus_tectorum, type="prob", progress='text'))
+
+# project out under future climate conditions
+cat(" -- projecting models across future climate conditions:\n")
+ssp_tridentata_suitability_future    <- projectModelByYearAndScenario(spp="ssp_tridentata", m=m_tridentata)
+  saveRasters(prefix="spp_tridentata", ssp_tridentata_suitability_future)
+ssp_wyomingensis_suitability_future  <- projectModelByYearAndScenario(spp="ssp_wyomingensis", m=m_wyomingensis)
+  saveRasters(prefix="ssp_wyomingensis", ssp_vaseyana_suitability_future)
+ssp_vaseyana_suitability_future      <- projectModelByYearAndScenario(spp="ssp_vaseyana", m=m_vaseyana)
+  saveRasters(prefix="ssp_vaseyana", ssp_vaseyana_suitability_future)
+bromus_tectorum_suitability_future   <- projectModelByYearAndScenario(spp="bromus_tectorum", m=m_bromus_tectorum)
+  saveRasters(prefix="bromus_tectorum", bromus_tectorum_suitability_future)
+
+# write our rasters to disk
+saveRasters(ssp_tridentata_suitability_future)
+# save and exit
+save.image(ls(pattern="m_|ssp_|bromus_"),"modeling_workspace.rdata",compress=T)
