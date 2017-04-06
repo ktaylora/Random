@@ -303,6 +303,21 @@ mask_by_boundary <- function(s=NULL, region_boundary=NULL){
     return(s[!is.na(over[,1]),])
   }
 }
+balanceClasses <- function(s){
+  if ( sum(s$response == 1) > sum(s$response == 0) ){
+    big_class <- 1
+    small_class <- 0
+  } else if ( sum(s$response == 0) > sum(s$response == 1) ){
+    big_class <- 0
+    small_class <- 1
+  } else {
+    return(s)
+  }
+  # downsample to the density of our "small class"
+  pos <- sample(which(s$response == big_class), size=sum(s$response == small_class))
+    pos <- s[pos,]
+  return(rbind(pos,s[s$response == small_class,]))
+}
 #' generate random pseudo-absences (i.e, in Canada and Mexico) at a density consistent
 #' with the area of the western US (US + Omernik) boundary. Default metohds fail
 #' for large ,irregular polygons like ours.
@@ -441,11 +456,12 @@ projectModelByYearAndScenario <- function(spp=NULL,m=NULL,year=c("50","70"),rcps
 }
 #' wrapper for writeRaster that can comprehend our raster hodge-podge
 saveRasters <- function(prefix=NULL, x=NULL){
+  cat(" -- saving prediction rasters:\n")
   dir.create("rasters")
-  for(n in names(x)){ # e.g., c("2050_45","2050_85","2070_45","2070_85")
-    raster::writeRaster(x[n]$mean, file.path(paste("rasters/",prefix,"_",n,".tif",sep="")), progress='text')
-    raster::writeRaster(x[n]$sd, file.path(paste("rasters/",prefix,"_",n,"_sd.tif",sep="")), progress='text')
-  }
+  names <- gsub(unlist(lapply(x,FUN=names)),pattern="X",replacement="20")
+    names <- gsub(names,pattern="0_",replacement="0_rcp")
+      names <- file.path(paste("rasters/",prefix,"_",names,".tif",sep=""))
+  mapply(x,FUN=raster::writeRaster,filename=names,progress='text')
 }
 
 ################################################################################
@@ -745,24 +761,30 @@ m_vaseyana        <- fitAndValidate(main="ssp. vaseyana", s=ssp_vaseyana, s_hold
 m_bromus_tectorum <- fitAndValidate(main="bromus tectorum")
 
 # project out as rasters
+dir.create("rasters")
 cat(" -- projecting models across current climate conditions:\n")
 ssp_tridentata_suitability_current   <- scale.dist(predict(climate_conditions_current, m_tridentata, type="prob", progress='text'))
+  raster::writeRaster(ssp_tridentata_suitability_current,filename=file.path("rasters/ssp_tridentata_current.tif"),progress='text')
 ssp_wyomingensis_suitability_current <- scale.dist(predict(climate_conditions_current, m_wyomingensis, type="prob", progress='text'))
+  raster::writeRaster(ssp_wyomingensis_suitability_current,filename=file.path("rasters/ssp_wyomingensis_current.tif"),progress='text')
 ssp_vaseyana_suitability_current     <- scale.dist(predict(climate_conditions_current, m_vaseyana, type="prob", progress='text'))
+  raster::writeRaster(ssp_vaseyana_suitability_current,filename=file.path("rasters/ssp_vaseyana_current.tif"),progress='text')
 bromus_tectorum_suitability_current  <- scale.dist(predict(climate_conditions_current, m_bromus_tectorum, type="prob", progress='text'))
+  raster::writeRaster(bromus_tectorum_suitability_current,filename=file.path("rasters/bromus_tectorum_current.tif"),progress='text')
 
 # project out under future climate conditions
 cat(" -- projecting models across future climate conditions:\n")
 ssp_tridentata_suitability_future    <- projectModelByYearAndScenario(spp="ssp_tridentata", m=m_tridentata)
-  saveRasters(prefix="spp_tridentata", ssp_tridentata_suitability_future)
 ssp_wyomingensis_suitability_future  <- projectModelByYearAndScenario(spp="ssp_wyomingensis", m=m_wyomingensis)
-  saveRasters(prefix="ssp_wyomingensis", ssp_vaseyana_suitability_future)
 ssp_vaseyana_suitability_future      <- projectModelByYearAndScenario(spp="ssp_vaseyana", m=m_vaseyana)
-  saveRasters(prefix="ssp_vaseyana", ssp_vaseyana_suitability_future)
 bromus_tectorum_suitability_future   <- projectModelByYearAndScenario(spp="bromus_tectorum", m=m_bromus_tectorum)
-  saveRasters(prefix="bromus_tectorum", bromus_tectorum_suitability_future)
 
 # write our rasters to disk
-saveRasters(ssp_tridentata_suitability_future)
+saveRasters(prefix="ssp_wyomingensis", ssp_tridentata_suitability_future)
+saveRasters(prefix="ssp_wyomingensis", ssp_wyomingensis_suitability_future)
+saveRasters(prefix="ssp_vaseyana",     ssp_vaseyana_suitability_future)
+saveRasters(prefix="bromus_tectorum",  bromus_tectorum_suitability_future)
+
 # save and exit
-save.image(ls(pattern="m_|ssp_|bromus_"),"modeling_workspace.rdata",compress=T)
+dir.create("models")
+save(list=ls(pattern="^m_|^ssp_|^bromus_"),file="models/modeling_workspace.rdata",compress=T)
