@@ -1,5 +1,12 @@
 #!/usr/bin/Rscript
 
+#
+# Script with BASH comprehension, useful for reprojecting and mosaicing raster
+# segments downloaded from a Google Earth Engine zipfile (as from Google Drive)
+#
+# Author: Kyle Taylor (kyle.taylor@pljv.org) (c) [2017]
+#
+
 argv <- commandArgs(trailingOnly=T)
 
 if(length(argv)<1) stop("requires one argument: ",
@@ -38,7 +45,6 @@ reproject_raster <- function(r=NULL,template="/global_workspace/ring_necked_phea
   return(final)
 }
 
-
 #
 # MAIN
 #
@@ -57,42 +63,52 @@ if(sum(using_directory)>0){
     stop("file",argv,"doesn't exist")
   } else {
     if(grepl(argv,pattern="zip$")){
+      # create a local dir for unpacking and read contents as raster
       if(dir.exists("unpack")){
-        unlink("unpack", recursive=T, force=T)
+        # unlink("unpack", recursive=T, force=T)
+      } else {
+        dir.create("unpack")
       }
       # read zipfile contents and figure out a good dest_file name
       dest_file <- unlist(strsplit(unzip(argv,list=T)[1,1],split="-0"))[1]
         dest_file <- paste(dest_file,".tif",sep="")
-      # create a local dir for unpacking and read contents as raster
-      dir.create("unpack")
+      # unpack and kludge for tif segments
       utils::unzip(argv, exdir="unpack", overwrite=T)
-      rasters <- list.files("unpack", pattern="tif$", full.names=T)
-    } else { # assume it's a raster : AFNP
+      rasters <- list.files("unpack", pattern=gsub(dest_file,
+                   pattern=".tif",replacement=".*[0-9].tif"), full.names=T)
+    } else {
+        # assume it's a raster : AFNP
         rasters <- argv
     }
   }
 }
-
+# stepwise reproject each raster segment to the CRS and resolution of
+# our target template raster data
 for(r in rasters){
   target <- gsub(r, pattern="tif$", replacement="reprojected.tif")
   if(file.exists(target)){
-    cat("target file",target,"already exists... skipping...\n")
+    cat(" -- target file",target,"already exists... skipping...\n")
   } else {
     r <- reproject_raster(r,template="/home/ktaylora/Workspace/nass/2016_crp_107x107.tif")
     cat(" -- writing to disk:\n")
     writeRaster(r, target, overwrite=T, progress='text')
     rm(r);
-    raster::removeTmpFiles();
+    raster::removeTmpFiles(h=1);
     gc()
   }
 }
-
-endCluster()
-
+raster::endCluster()
+# merge reprojected segments
+cat(" -- merging\n")
 rasters <- as.list(list.files("unpack", pattern="reprojected.tif$", full.names=T))
   rasters <- lapply(rasters, raster)
     rasters <- do.call(raster::merge, rasters)
-
+# write to disk
+cat(" -- writing to disk\n")
 writeRaster(rasters,dest_file,overwrite=T)
+# clean up
+unlink(list.files("unpack", pattern=gsub(dest_file,
+  pattern=".tif",replacement=".*.tif"), full.names=T),
+    recursive=T, force=T)
 
-raster::removeTmpFiles()
+raster::removeTmpFiles(h=1);
