@@ -16,13 +16,16 @@ rasterOptions(tmpdir="/home/ktaylora/r_raster_tmp")
 # local function declarations
 #
 
-reproject_raster <- function(r=NULL,template=NULL){
+reproject_raster <- function(r=NULL,template="/global_workspace/ring_necked_pheasant_imbcr_models/raster/2016_crp_107x107.tif"){
+  if(!file.exists(template)){
+    stop("template= file doesn't exist")
+  }
   if(!inherits(r,"Raster")){
     r <- raster::raster(r)
   }
   # fixed raster template object we are projecting "to"
-  if(is.null(template)){
-    template <- raster("/global_workspace/ring_necked_pheasant_imbcr_models/raster/2016_crp_107x107.tif")
+  if(!inherits(template,"Raster")){
+    template <- raster::raster(template)
   }
   # reproject, if needed
   if(raster::projection(r) != raster::projection(template)){
@@ -75,7 +78,8 @@ for(r in rasters){
   if(file.exists(target)){
     cat("target file",target,"already exists... skipping...\n")
   } else {
-    r <- reproject_raster(r)
+    r <- reproject_raster(r,template="/home/ktaylora/Workspace/nass/2016_crp_107x107.tif")
+    cat(" -- writing to disk:\n")
     writeRaster(r, target, overwrite=T, progress='text')
     rm(r);
     raster::removeTmpFiles();
