@@ -22,12 +22,16 @@ reproject_raster <- function(r=NULL,template=NULL){
   }
   # fixed raster template object we are projecting "to"
   if(is.null(template)){
-    template <- raster("/global_workspace/ring_necked_pheasant_imbcr_models/
-                        raster/2016_crp_107x107.tif")
+    template <- raster("/global_workspace/ring_necked_pheasant_imbcr_models/raster/2016_crp_107x107.tif")
   }
-  cat(" -- reprojecting:",names(r),"\n")
-  reprojected <- raster::projectRaster(r, crs=CRS(projection(template)),progress='text')
-    final <- raster::projectRaster(reprojected,to=template, progress='text')
+  # reproject, if needed
+  if(raster::projection(r) != raster::projection(template)){
+    cat(" -- reprojecting:",names(r),"\n")
+    reprojected <- raster::projectRaster(r, crs=CRS(projection(template)),progress='text')
+      final <- raster::projectRaster(reprojected,to=template, progress='text')
+  } else {
+    final <- r
+  }
   return(final)
 }
 
@@ -36,10 +40,11 @@ reproject_raster <- function(r=NULL,template=NULL){
 # MAIN
 #
 
-using_directory <- which(grepl(tolower(argv),pattern="-d"))
+using_directory <- which(grepl(tolower(argv),pattern="-d $"))
+      dest_file <- "merged.tif"
 
 if(sum(using_directory)>0){
-  rasters <- list.files(argv[using_directory+1], pattern="tif$", fullnames=T)
+  rasters <- list.files(argv[using_directory+1], pattern="tif$", full.names=T)
   if(length(rasters)<1){
     stop("-d directory argument didn't contain any .tif images")
   }
@@ -50,28 +55,40 @@ if(sum(using_directory)>0){
   } else {
     if(grepl(argv,pattern="zip$")){
       if(dir.exists("unpack")){
-        unlink("unpack")
-      } 
+        unlink("unpack", recursive=T, force=T)
+      }
+      # read zipfile contents and figure out a good dest_file name
+      dest_file <- unlist(strsplit(unzip(argv,list=T)[1,1],split="-0"))[1]
+        dest_file <- paste(dest_file,".tif",sep="")
+      # create a local dir for unpacking and read contents as raster
       dir.create("unpack")
       utils::unzip(argv, exdir="unpack", overwrite=T)
       rasters <- list.files("unpack", pattern="tif$", full.names=T)
-    } else { # assume it's a raster : AFNP 
+    } else { # assume it's a raster : AFNP
         rasters <- argv
     }
   }
 }
 
 for(r in rasters){
-  target <- <- gsub(r, pattern="tif$", replacement="reprojected.tif")
+  target <- gsub(r, pattern="tif$", replacement="reprojected.tif")
   if(file.exists(target)){
     cat("target file",target,"already exists... skipping...\n")
   } else {
-    r <- reproject_raster(r)  
+    r <- reproject_raster(r)
     writeRaster(r, target, overwrite=T, progress='text')
     rm(r);
     raster::removeTmpFiles();
     gc()
-  } 
+  }
 }
 
 endCluster()
+
+rasters <- as.list(list.files("unpack", pattern="reprojected.tif$", full.names=T))
+  rasters <- lapply(rasters, raster)
+    rasters <- do.call(raster::merge, rasters)
+
+writeRaster(rasters,dest_file,overwrite=T)
+
+raster::removeTmpFiles()
