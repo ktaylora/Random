@@ -1,8 +1,9 @@
 #!/usr/bin/Rscript
 
 #
-# Script with BASH comprehension, useful for reprojecting and mosaicing raster
-# segments downloaded from a Google Earth Engine zipfile (as from Google Drive)
+# A handy script with BASH comprehension, useful for reprojecting and mosaicing
+# raster segments downloaded from a Google Earth Engine zipfile (as from Google
+# Drive)
 #
 # Author: Kyle Taylor (kyle.taylor@pljv.org) (c) [2017]
 #
@@ -18,12 +19,13 @@ require(raster)
 
 beginCluster(n=2)
 rasterOptions(tmpdir="/home/ktaylora/r_raster_tmp")
+template <- "/global_workspace/ring_necked_pheasant_imbcr_models/raster/2016_crp_107x107.tif"
 
 #
 # local function declarations
 #
 
-reproject_raster <- function(r=NULL,template="/global_workspace/ring_necked_pheasant_imbcr_models/raster/2016_crp_107x107.tif"){
+reproject_raster <- function(r=NULL,template=NULL){
   if(!file.exists(template)){
     stop("template= file doesn't exist")
   }
@@ -50,6 +52,8 @@ reproject_raster <- function(r=NULL,template="/global_workspace/ring_necked_phea
 #
 
 using_directory <- which(grepl(tolower(argv),pattern="-d $"))
+using_template  <- which(grepl(tolower(argv),pattern="-t $"))
+using_destfile  <- which(grepl(tolower(argv),pattern="-o $"))
       dest_file <- "merged.tif"
 
 if(sum(using_directory)>0){
@@ -82,6 +86,11 @@ if(sum(using_directory)>0){
     }
   }
 }
+if(sum(using_template)>0){
+  template <- argv[using_template+1]
+} else {
+  template <- "/home/ktaylora/Workspace/nass/2016_crp_107x107.tif"
+}
 # stepwise reproject each raster segment to the CRS and resolution of
 # our target template raster data
 for(r in rasters){
@@ -89,7 +98,7 @@ for(r in rasters){
   if(file.exists(target)){
     cat(" -- target file",target,"already exists... skipping...\n")
   } else {
-    r <- reproject_raster(r,template="/home/ktaylora/Workspace/nass/2016_crp_107x107.tif")
+    r <- reproject_raster(r,template=template)
     cat(" -- writing to disk:\n")
     writeRaster(r, target, overwrite=T, progress='text')
     rm(r);
@@ -106,7 +115,8 @@ rasters <- as.list(list.files("unpack", pattern="reprojected.tif$", full.names=T
 # write to disk
 cat(" -- writing to disk\n")
 writeRaster(rasters,dest_file,overwrite=T)
-# clean up
+# clean up, but only "our" files -- allow that other threads might be using
+# the unpack directory
 unlink(list.files("unpack", pattern=gsub(dest_file,
   pattern=".tif",replacement=".*.tif"), full.names=T),
     recursive=T, force=T)
