@@ -410,7 +410,7 @@ buildTrainingDataset <- function(spp="spp_tridentata", gap=NULL,
                                src_region_boundary=region_boundary_us,
                                target_region_boundary=region_boundary_non_us)
   # dupe check and balance classes
-  s <- balanceClasses([!duplicated(s@coords),])
+  s <- balanceClasses(s[!duplicated(s@coords),])
 
   # write to disk for validation
   writeOGR(s,"training_data",paste(spp,"_gap_training_data",sep=""),driver="ESRI Shapefile",overwrite=T)
@@ -511,7 +511,7 @@ saveRasters <- function(prefix=NULL, x=NULL){
   names <- gsub(unlist(lapply(x,FUN=names)),pattern="X",replacement="20")
     names <- gsub(names,pattern="0_",replacement="0_rcp")
       names <- file.path(paste("rasters/",prefix,"_",names,".tif",sep=""))
-  mapply(x,FUN=raster::writeRaster,filename=names,progress='text')
+  mapply(x,FUN=raster::writeRaster,filename=names,progress='text',overwrite=T)
 }
 
 ################################################################################
@@ -528,6 +528,8 @@ saveRasters <- function(prefix=NULL, x=NULL){
 
 # pre-define climate and topographic conditions thought to be limiting to big sagebrush,
 # but still inclusive of our occurrence data (SEMIARID HIGHLANDS)
+
+raster::rasterOptions(tmpdir="/home/ktaylora/raster_tmp")
 
 study_region_levels <- c("NORTH AMERICAN DESERTS",
                          "MEDITERRANEAN CALIFORNIA",
@@ -580,7 +582,7 @@ cat(" -- fetching / cropping / reading worldclim data\n")
 # See VisTrails-SAHM documentation for an overview.
 
 gcm_abbrevs  <- c("ac","gf","in","ip")
-bioclim_vars <- c(3,4,11,15,18) # variables selected from the optimal variable set outlined in Schlaepfer et al., 2012. Not interested in variable intercomparison
+bioclim_vars <- c(3,4,11,15,18) # variables selected from the optimal variable set outlined in Schlaepfer et al., 2012. Not interested in variable comparison here
 time_periods <- c("current","2050","2070")
 
 dir.create("climate_data")
@@ -768,13 +770,13 @@ m_bromus_tectorum <- fitAndValidate(main="bromus tectorum")
 dir.create("rasters")
 cat(" -- projecting models across current climate conditions:\n")
 ssp_tridentata_suitability_current   <- scale.dist(predict(climate_conditions_current, m_tridentata, type="prob", progress='text'))
-  raster::writeRaster(ssp_tridentata_suitability_current,filename=file.path("rasters/ssp_tridentata_current.tif"),progress='text')
+  raster::writeRaster(ssp_tridentata_suitability_current,filename=file.path("rasters/ssp_tridentata_current.tif"),progress='text', overwrite=T)
 ssp_wyomingensis_suitability_current <- scale.dist(predict(climate_conditions_current, m_wyomingensis, type="prob", progress='text'))
-  raster::writeRaster(ssp_wyomingensis_suitability_current,filename=file.path("rasters/ssp_wyomingensis_current.tif"),progress='text')
+  raster::writeRaster(ssp_wyomingensis_suitability_current,filename=file.path("rasters/ssp_wyomingensis_current.tif"),progress='text', overwrite=T)
 ssp_vaseyana_suitability_current     <- scale.dist(predict(climate_conditions_current, m_vaseyana, type="prob", progress='text'))
-  raster::writeRaster(ssp_vaseyana_suitability_current,filename=file.path("rasters/ssp_vaseyana_current.tif"),progress='text')
+  raster::writeRaster(ssp_vaseyana_suitability_current,filename=file.path("rasters/ssp_vaseyana_current.tif"),progress='text', overwrite=T)
 bromus_tectorum_suitability_current  <- scale.dist(predict(climate_conditions_current, m_bromus_tectorum, type="prob", progress='text'))
-  raster::writeRaster(bromus_tectorum_suitability_current,filename=file.path("rasters/bromus_tectorum_current.tif"),progress='text')
+  raster::writeRaster(bromus_tectorum_suitability_current,filename=file.path("rasters/bromus_tectorum_current.tif"),progress='text', overwrite=T)
 
 # project out under future climate conditions
 cat(" -- projecting models across future climate conditions:\n")
