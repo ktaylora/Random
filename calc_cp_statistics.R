@@ -32,7 +32,9 @@ sort_ndvi_rasters_by_season <- function(path=NULL, pattern=NULL){
 calc_transect_centroids <- function(s=NULL){
   centroids <- s[!duplicated(s$transectnum),]
   centroids <- rgeos::gCentroid(centroids,byid=T,id=centroids$transectnum)
-  centroids <- sp::SpatialPointsDataFrame(centroids,data=data.frame(transectnum=s[!duplicated(s$transectnum),'transectnum']))
+  centroids <- sp::SpatialPointsDataFrame(centroids,
+      data=data.frame(transectnum=s[!duplicated(s$transectnum),'transectnum'])
+    )
   centroids@data <- data.frame(transectnum=centroids@data[,1])
   return(centroids)
 }
@@ -48,9 +50,11 @@ calc_distance_to_features <- function(s=NULL, to=NULL, converter=6.21371e-4){
 #' we have to talk about your function names...
 calc_ndvi_at_treatment_sample_pts <- function(pattern="cp1.*.ndvi.*.tif$", write=NULL){
   cp_seasons <- sort_ndvi_rasters_by_season(RASTER_DIR, pattern=pattern)
-    cp_seasonal_points <- sampleRandom(cp_seasons,size=99999,sp=T,na.rm=T)
+    cp_seasonal_points <- raster::rasterToPoints(cp_seasons,spatial=T,na.rm=T)
   if(!is.null(write)){
-    writeOGR(cp_seasonal_points, ".", layer=write, driver="ESRI Shapefile")
+    writeOGR(cp_seasonal_points, ".",
+        layer=write, driver="ESRI Shapefile", overwrite=T
+      )
   }
   return(cp_seasonal_points)
 }
@@ -58,17 +62,21 @@ calc_ndvi_at_treatment_sample_pts <- function(pattern="cp1.*.ndvi.*.tif$", write
 # Grab IMBCR data
 #
 
-s <- spTransform(OpenIMBCR:::imbcrTableToShapefile(OpenIMBCR:::recursiveFindFile(
-  "master_imbcr_table.csv")), CRS(projection("+init=epsg:2163")))
+s <- spTransform(OpenIMBCR:::imbcrTableToShapefile(OpenIMBCR:::
+    recursiveFindFile("master_imbcr_table.csv")),
+    CRS(projection("+init=epsg:2163"))
+  )
 
 #
 # Read-in treatment vector datasets
 #
 
 s_cp_1 <- sp::spTransform(readOGR("Vector","cp_1", verbose=F),
-  CRS(projection("+init=epsg:2163")))
+    CRS(projection("+init=epsg:2163"))
+  )
 s_cp_2 <- sp::spTransform(readOGR("Vector","cp_2", verbose=F),
-  CRS(projection("+init=epsg:2163")))
+    CRS(projection("+init=epsg:2163"))
+  )
 
 #
 # Calculate distance to treatment vectors
@@ -108,7 +116,5 @@ ggplot(transect_dist_to_cp_2, aes(distance)) +
 #   cp1_seasonal_points <- sampleRandom(cp1_seasons,size=99999,sp=T,na.rm=T)
 #     writeOGR(cp1_seasonal_points, ".", "cp1_seasonal_points", driver="ESRI Shapefile")
 
-calc_ndvi_at_treatment_sample_pts(pattern="cp1.*.ndvi.*.tif$", write="cp1_seasonal_points")
-  #cp1_seasons <- calc_seasonal_ndvi_by(s_cp_1,r=cp1_seasons)
-calc_ndvi_at_treatment_sample_pts(pattern="cp2.*.ndvi.*.tif$", write="cp2_seasonal_points")
-  #cp2_seasons <- calc_seasonal_ndvi_by(s_cp_2,r=cp2_seasons)
+cp1_ndvi_samples <- calc_ndvi_at_treatment_sample_pts(pattern="cp1.*.ndvi.*.tif$", write="cp1_seasonal_points")
+cp2_ndvi_samples <- calc_ndvi_at_treatment_sample_pts(pattern="cp2.*.ndvi.*.tif$", write="cp2_seasonal_points")
