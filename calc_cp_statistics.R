@@ -548,6 +548,10 @@ seasonal_cp1_cp2_ndvi_histograms(
 #
 
 #
+# Mask by CRP Age and see if we detect a difference in older fields
+#
+
+#
 # ML classifier comparison
 #
 
