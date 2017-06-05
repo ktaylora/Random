@@ -9,6 +9,7 @@
 require(raster)
 require(rgdal)
 require(rgdal)
+require(parallel)
 require(ggplot2)
 
 RASTER_DIR <- "/home/ktaylora/Workspace/tpw_imbcr_grassland_birds_workflow/Raster"
@@ -148,16 +149,26 @@ rfLoessSmoother <- function(m=NULL, sourceTable=NULL, focal_var=NULL, class=1,
     return(ret)
   }
 }
-#' rebag our input data table -- and balance the presence/absences by randomly-downsampling the over-abundant class
+#' rebag our input data table by balancing classes and randomly-downsampling
+#' all classes to the least abundant class
 #' @export
-rebag <- function(t, y.var="response"){
-  final <- t[sample(which(t[, y.var] == 1),
-    size=sum(t[, y.var] == 0)), ]
-  final <- rbind(final, t[t[, y.var] == 0,])
-  # drop our latent variables used for testing
-  final <- final[, ! grepl(names(final), pattern="ID$|X$")]
+rebag <- function(t, y.var="response",shuffle=F){
+  classes <- unique(t[,y.var])
+  min_class_size <- min(table(t[,y.var]))
 
-  final <- final[sample(1:nrow(final),size=nrow(final),replace=F),] # randomise the order of our input data
+  final <- t[sample(which(t[, y.var] == classes[1]),
+    size=min_class_size), ]
+
+  for(i in 2:length(classes)){
+    final <- rbind(
+        final,t[sample(which(t[, y.var] == classes[i]),
+        size=min_class_size), ]
+      )
+  }
+  if(shuffle){
+    final <- final[sample(1:nrow(final),size=nrow(final),replace=F),]
+  }
+  return(final)
 }
 #' bootstrap the rf model selection process by re-sampling (with replacement) the input training
 #' dataset. Returns a table with summary importance metrics averaged across n boot-strapped model runs.
@@ -316,10 +327,10 @@ post_stratify_across_seasons <- function(s=NULL, write=NULL,
   return(s)
 }
 
-simple_hist_plot <- function(x,xlab=NULL,main=NULL, xlim=NULL){
+simple_hist_plot <- function(x,xlab=NULL,main=NULL, xlim=NULL,...){
   hist(x, main=main, xlab=xlab, breaks=50,
        col="#4A8EBC", border="#D6EEFF",
-       ylab=NULL, xlim=xlim
+       ylab=NULL, xlim=xlim, ...
     )
   grid(lty=2,lwd=0.5,col="LightGrey")
   abline(lwd=1.5, v=mean(x)+(sd(x)/sqrt(length(x))),col="DarkGrey")
@@ -333,32 +344,33 @@ simple_hist_plot <- function(x,xlab=NULL,main=NULL, xlim=NULL){
 
 seasonal_cp1_cp2_ndvi_histograms <- function(s_cp1=NULL,
                                              s_cp2=NULL,
-                                             xlim=c(-0.15,0.30)){
+                                             xlim=c(-0.15,0.30),
+                                             ...){
   dev.new()
   par(mfrow=c(2,4))
   simple_hist_plot(s_cp1$spring,
-      xlab="CP1 (Spring)", xlim=xlim
+      xlab="CP1 (Spring)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp1$summer,
-      xlab="CP1 (Summer)", xlim=xlim
+      xlab="CP1 (Summer)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp1$fall,
-      xlab="CP1 (Fall)", xlim=xlim
+      xlab="CP1 (Fall)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp1$winter,
-      xlab="CP1 (Winter)", xlim=xlim
+      xlab="CP1 (Winter)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp2$spring,
-      xlab="CP2 (Spring)", xlim=xlim
+      xlab="CP2 (Spring)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp2$summer,
-      xlab="CP2 (Summer)", xlim=xlim
+      xlab="CP2 (Summer)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp2$fall,
-      xlab="CP2 (Fall)", xlim=xlim
+      xlab="CP2 (Fall)", xlim=xlim, ...
     )
   simple_hist_plot(s_cp2$winter,
-      xlab="CP2 (Winter)", xlim=xlim
+      xlab="CP2 (Winter)", xlim=xlim, ...
     )
 }
 
@@ -511,7 +523,7 @@ system.time(
   )
 
 #
-# Take a peek at our sample means
+# Take a peek at our region-wide sample means
 #
 
 # Means comparison
@@ -526,14 +538,47 @@ seasonal_cp1_cp2_ndvi_histograms(
     xlim=c(0.15,0.30)
   )
 
+#
+# Plot randomized selection of regional samples
+#
+
+#
+# Difference between Texas + New Mexico + Kansas and
+# the Region-wide seasonal greeness?
+#
+
+#
 # ML classifier comparison
+#
 
-rf_full_dataset <- rbind(cp1@data,cp2@data)
-rf_full_dataset <- cbind(treatment=c(rep("cp1",nrow(cp1@data)),
-    rep("cp2",nrow(cp2@data))),rf_full_dataset
+cl <- makeCluster(parallel::detectCores()-1)
+
+rf_full_dataset <- cbind(
+    treatment=c(
+      rep("cp1",nrow(cp1_seasonal_points_post_stratified@data)),
+      rep("cp2",nrow(cp2_seasonal_points_post_stratified@data))
+    ),
+    rbind(
+        cp1_seasonal_points_post_stratified@data,
+        cp2_seasonal_points_post_stratified@data
+    )
   )
 
-m <- randomForest(as.factor(treatment)~.,
-    data=rf_testframe[sample(1:nrow(rf_testframe),size=20000), ],
-    ntree=1000, do.trace=T
-  )
+runs <- 1:10
+runs <- parLapply(cl, as.list(runs),
+                 varlist=c(rebag, rf_full_dataset),
+                 fun=function(){
+    t <- rebag(rf_full_dataset,
+             y.var="treatment",
+             shuffle=T
+           )
+    t <- rebag(t[sample(1:nrow(t),size=21000), ],
+           y.var="treatment",
+           shuffle=T
+         )
+    return(randomForest::randomForest(as.factor(treatment)~.,
+        data=t,
+        ntree=200,
+        do.trace=F
+      ))
+  })
