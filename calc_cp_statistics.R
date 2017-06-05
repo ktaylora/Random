@@ -419,7 +419,50 @@ calc_ndvi_at_treatment_sample_pts <- function(pattern="cp1.*.ndvi.*.tif$", write
   }
   return(cp_seasonal_points)
 }
+split_by_state <- function(s=NULL,name=NULL){
+  states <- rgdal::readOGR(
+      "/home/ktaylora/Workspace/cswg/Vector/Source/",
+      "cb_2015_us_state_20m",
+      verbose=F
+    )
 
+  state <- sp::spTransform(states[tolower(states$NAME) == tolower(name),],
+      CRS(projection(s))
+    )
+
+  in_state <- !is.na(sp::over(
+      s,
+      state
+    )[,1])
+
+  s_in_state <-
+    s[in_state,]
+
+  s_not_in_state <-
+    s[!in_state,]
+
+  ret <- list(s_in_state,s_not_in_state)
+    names(ret) <- c("in","out")
+  return(ret)
+}
+#' two-tailed means testing for in/out (geographic) groups
+two_tailed_means_testing <- function(s, alpha=0.95){
+  seasons <- c('spring','summer','fall','winter')
+  result  <- rep(FALSE,length(seasons))
+  for( i in 1:length(seasons) ){
+    upper <- quantile(s[['out']]@data[,seasons[i]],
+        p=1-((1-alpha)/2)
+      )
+    lower <- quantile(s[['out']]@data[,seasons[i]],
+        p=0+((1-alpha)/2)
+      )
+    test <- quantile(s[['in']]@data[,seasons[i]],
+        p=0.5
+      )
+    result[i] <- (test > upper) | (test < lower)
+  }
+  return(result)
+}
 #
 # Grab IMBCR data
 #
@@ -523,6 +566,52 @@ system.time(
   )
 
 #
+# Mask by CRP Age and see if we detect a difference in older fields
+#
+
+#
+# Regional difference between treatments?
+#
+
+regional_stratified_pts <- list(
+    cp1_seasonal_points_post_stratified, # introduced cool-season grasses
+    cp2_seasonal_points_post_stratified  # warm-season grasses
+  )
+names(regional_stratified_pts) <- c("in","out")
+
+two_tailed_means_testing(regional_stratified_pts)
+
+#
+#
+# Difference between Texas + New Mexico + Kansas and
+# the Region-wide seasonal greeness?
+#
+cp1_seasonal_points_post_stratified_tx <- split_by_state(
+    cp1_seasonal_points_post_stratified,
+    name="texas"
+  )
+cp1_seasonal_points_post_stratified_nm <- split_by_state(
+    cp1_seasonal_points_post_stratified,
+    name="new mexico"
+  )
+cp1_seasonal_points_post_stratified_ks <- split_by_state(
+    cp1_seasonal_points_post_stratified,
+    name="kansas"
+  )
+cp2_seasonal_points_post_stratified_tx <- split_by_state(
+    cp2_seasonal_points_post_stratified,
+    name="texas"
+  )
+cp2_seasonal_points_post_stratified_nm <- split_by_state(
+    cp2_seasonal_points_post_stratified,
+    name="new mexico"
+  )
+cp2_seasonal_points_post_stratified_ks <- split_by_state(
+    cp2_seasonal_points_post_stratified,
+    name="kansas"
+  )
+
+#
 # Take a peek at our region-wide sample means
 #
 
@@ -538,17 +627,27 @@ seasonal_cp1_cp2_ndvi_histograms(
     xlim=c(0.15,0.30)
   )
 
+two_tailed_means_testing(cp1_seasonal_points_post_stratified_tx,
+    alpha=0.9
+  )
+two_tailed_means_testing(cp1_seasonal_points_post_stratified_nm,
+    alpha=0.9
+  )
+two_tailed_means_testing(cp1_seasonal_points_post_stratified_ks,
+    alpha=0.9
+  )
+two_tailed_means_testing(cp2_seasonal_points_post_stratified_tx,
+    alpha=0.9
+  )
+two_tailed_means_testing(cp2_seasonal_points_post_stratified_nm,
+    alpha=0.9
+  )
+two_tailed_means_testing(cp2_seasonal_points_post_stratified_ks,
+    alpha=0.9
+  )
+
 #
 # Plot randomized selection of regional samples
-#
-
-#
-# Difference between Texas + New Mexico + Kansas and
-# the Region-wide seasonal greeness?
-#
-
-#
-# Mask by CRP Age and see if we detect a difference in older fields
 #
 
 #
@@ -572,6 +671,7 @@ runs <- 1:10
 runs <- parLapply(cl, as.list(runs),
                  varlist=c(rebag, rf_full_dataset),
                  fun=function(){
+    require(randomForest)
     t <- rebag(rf_full_dataset,
              y.var="treatment",
              shuffle=T
