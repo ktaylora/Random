@@ -1,7 +1,7 @@
 #
 # CP1/2 Grassland Productivity Summary Analysis
 # This workflow details a pre-cursor analysis to looking at the feasibility of
-# using CP1/2 treatments in a region-wide IMBCR analysis
+# using CP1/2 treatments in a region-wide IMBCR analysis.
 #
 # Author : Kyle Taylor (kyle.taylor@pljv.org) [2017]
 #
@@ -644,6 +644,18 @@ two_tailed_means_testing(cp2_seasonal_points_post_stratified_nm,
   )
 two_tailed_means_testing(cp2_seasonal_points_post_stratified_ks,
     alpha=0.9
+  )
+
+tx_cp_1_2_post_stratified <- list(
+    cp1_seasonal_points_post_stratified_tx[['in']],
+    cp2_seasonal_points_post_stratified_tx[['in']]
+  )
+
+names(tx_cp_1_2_post_stratified) <- c("in","out")
+
+two_tailed_means_testing(
+    tx_cp_1_2_post_stratified,
+    alpha=0.6
   )
 
 #
