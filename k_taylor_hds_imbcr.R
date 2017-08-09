@@ -54,11 +54,11 @@ timeperiod_fieldname <- function(df=NULL){
 #' that were sampled, but where a focal species wasn't observed, with
 #' NA values
 #' @export
-backfill_imbcr_df_with_na_values <- function(df,
-                                             allow_duplicate_timeperiods=F,
-                                             four_letter_code=NULL,
-                                             back_fill_all_na=T){
-  # throw-out any lurking crazy 88 values, count before start values, and
+scrub_imbcr_df <- function(df,
+                           allow_duplicate_timeperiods=F,
+                           four_letter_code=NULL,
+                           back_fill_all_na=T){
+  # throw-out any lurking 88 values, count before start values, and
   # -1 distance observations
   df <- df[!df@data[, timeperiod_fieldname(df)] == 88, ]
   df <- df[!df@data[, timeperiod_fieldname(df)] == -1, ]
@@ -176,8 +176,9 @@ calc_dist_bins <- function(df=NULL, p=0.90, breaks=10){
 }
 #' summarize transect data and metadata by year (with list comprehension)
 #' @export
-pool_by_transect_year <- function(x=NULL, df=NULL, breaks=distance_breaks){
-  breaks <- length(distance_breaks)
+pool_by_transect_year <- function(x=NULL, df=NULL, breaks=NULL, covs=NULL,
+                                  summary_fun=median){
+  breaks <- length(breaks)
   transect_year_summaries <- data.frame()
   # summarize focal_transect_year by breaking into counts within
   # distance classes and binding effort, year, and covs calculated
@@ -273,9 +274,10 @@ build_unmarked_gds <- function(df=NULL,
   # pool our transect-level observations
   transects <- do.call(rbind,
       lapply(
-          transects, 
+          transects,
           FUN=pool_by_transect_year,
-          df=df, breaks=distance_breaks
+          df=df, breaks=distance_breaks,
+          covs=covs
         )
     )
   # build our unmarked frame and return to user
@@ -301,7 +303,7 @@ build_unmarked_gds <- function(df=NULL,
 #
 
 witu_imbcr_observations <-
-  backfill_imbcr_df_with_na_values(OpenIMBCR::imbcrTableToShapefile(
+  scrub_imbcr_df(OpenIMBCR::imbcrTableToShapefile(
     list.files("..",
          pattern="imbcr_table.csv$",
          recursive=T,
@@ -409,9 +411,13 @@ ds_umdf <- build_unmarked_gds(
     distance_breaks=breaks
   )
 
+# clean up the umdf and check our NA bin density relative
+# to the other bins
 
 row.names(ds_umdf@y) <- NULL
 row.names(ds_umdf@siteCovs) <- NULL
+
+summary(ds_umdf)
 colSums(ds_umdf@y)/max(colSums(ds_umdf@y))
 
 fit_null <- function(starts=runif(n=6,min=0,max=5),ds_umdf=ds_umdf){
@@ -422,7 +428,7 @@ fit_null <- function(starts=runif(n=6,min=0,max=5),ds_umdf=ds_umdf){
       data=ds_umdf,keyfun="uniform",mixture="P",
       starts=starts,
       #method="SANN",
-      # starts=c(40),
+      # starts=c(2),
       K=50,
       output="density",unitsOut="kmsq"
     ))
@@ -436,8 +442,12 @@ fit_null <- function(starts=runif(n=6,min=0,max=5),ds_umdf=ds_umdf){
 cl <- parallel::makeCluster(4)
 
 par_fit_null <- function(){
-  starts <- lapply(rep(6,999),FUN=runif,min=0,max=5)
-    starts <- parLapply(cl,starts,fun=fit_null,ds_umdf=ds_umdf)
+  starts <- parLapply(
+      cl,
+      lapply(rep(6,999),FUN=runif,min=0,max=5), # meh
+      fun=fit_null,
+      ds_umdf=ds_umdf
+    )
   return(list(starts=starts,
          match=unlist(lapply(starts,FUN=function(x) class(x)!="try-error"))))
 }
