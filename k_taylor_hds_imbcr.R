@@ -24,8 +24,8 @@ require(unmarked)
 #
 # Define our workspace
 #
-setwd("/global_workspace/imbcr_number_crunching/k_taylor_imbcr_hds_workflow")
-pljv_boundary <- readOGR("/gis_data/PLJV/","PLJV_Boundary", verbose=F)
+# setwd("/global_workspace/imbcr_number_crunching/k_taylor_imbcr_hds_workflow")
+# pljv_boundary <- readOGR("/gis_data/PLJV/","PLJV_Boundary", verbose=F)
 
 #
 # Define some useful local functions for manipulating IMBCR data
