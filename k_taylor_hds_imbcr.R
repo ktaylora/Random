@@ -328,17 +328,21 @@ witu_imbcr_observations <-
 # Total variables : (10 scales) * 2(composition+configuration metrics) * 6(
 # plant communities) + Year + Lat + Lon = 123 variables tested step-wise, by
 # scale, using AIC. That's 2^(15) = 32,768 models to test, per-scale.
-# Is there a Bonferroni correction we can apply to AIC for our model selection?
 #
+
+# skip covariates for now -- we will use year, latitude, and longitude for 
+# model testing (below)
 
 # calculate distance bins
 # breaks <- seq(0,350,length.out=6)
 # breaks <- c(0,20,40,60,80,100)
+
 breaks <- append(0,as.numeric(quantile(as.numeric(
     witu_imbcr_observations$radialdistance),
     na.rm=T,
     probs=seq(0.1,0.85,length.out=9))
   ))
+
 witu_imbcr_observations <- calc_dist_bins(
                                witu_imbcr_observations,
                                breaks=breaks
