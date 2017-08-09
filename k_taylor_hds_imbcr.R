@@ -272,7 +272,11 @@ build_unmarked_gds <- function(df=NULL,
   transects <- unique(df[,transect_fieldname(df)])
   # pool our transect-level observations
   transects <- do.call(rbind,
-      lapply(transects, FUN=pool_by_transect_year, df=df)
+      lapply(
+          transects, 
+          FUN=pool_by_transect_year,
+          df=df, breaks=distance_breaks
+        )
     )
   # build our unmarked frame and return to user
   return(unmarked::unmarkedFrameGDS(
@@ -331,7 +335,7 @@ witu_imbcr_observations <-
 # scale, using AIC. That's 2^(15) = 32,768 models to test, per-scale.
 #
 
-# skip covariates for now -- we will use year, latitude, and longitude for 
+# skip covariates for now -- we will use year, latitude, and longitude for
 # model testing (below)
 
 # calculate distance bins
