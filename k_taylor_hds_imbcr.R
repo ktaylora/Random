@@ -6,11 +6,10 @@
 #
 
 #
-# Todos : (a) make sure that something crewy isn't happening with the bins
-#         (1) change backfill_imbcr_df_with_na_values so that it won't back-fill
-#         NA values? (2) test a standard implementation of distsamp with pooling
-#         instead of gdistsamp. (3) test an implementation of station-level
-#         distsamp. (3) test an implementation of gmultmix.
+# Todos : (1) make sure that something screwy isn't happening with the distance bins;
+#         (2) test a standard implementation of distsamp with pooling
+#         instead of gdistsamp; (3) test an implementation of station-level
+#         distsamp; (4) test an implementation of gmultmix.
 #
 
 require(rgdal)
