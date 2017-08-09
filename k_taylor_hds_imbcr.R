@@ -409,8 +409,8 @@ fit_null <- function(starts=runif(n=6,min=0,max=5),ds_umdf=ds_umdf){
   intercept_m <- try(unmarked::gdistsamp(
       ~year+lat+lon+offset(log(effort)),      # abundance covs
       ~1,                                     # availability covs
-      ~year+doy, # detection covs
-      data=ds_umdf,keyfun="halfnorm",mixture="P",
+      ~year+doy,                              # detection covs
+      data=ds_umdf,keyfun="uniform",mixture="P",
       starts=starts,
       #method="SANN",
       # starts=c(40),
