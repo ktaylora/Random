@@ -1,5 +1,5 @@
 #
-# Implement the HDS model of Chandler et al (2011) for the gridded distance
+# Implement the HDS model of Royle (2004) for the gridded distance
 # observations made along IMBCR transects
 #
 # Author: Kyle Taylor (kyle.taylor@pljv.org) [2017]
