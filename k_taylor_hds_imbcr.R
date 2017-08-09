@@ -6,8 +6,8 @@
 #
 
 #
-# Todos : (1) make sure that something screwy isn't happening with the distance bins;
-#         (2) test a standard implementation of distsamp with pooling
+# Todos : (1) make sure that something screwy isn't happening with the distance
+#         bins; (2) test a standard implementation of distsamp with pooling
 #         instead of gdistsamp; (3) test an implementation of station-level
 #         distsamp; (4) test an implementation of gmultmix.
 #
@@ -427,7 +427,8 @@ fit_null <- function(starts=runif(n=6,min=0,max=5),ds_umdf=ds_umdf){
       ~year+doy,                              # detection covs
       data=ds_umdf,keyfun="uniform",mixture="P",
       starts=starts,
-      #method="SANN",
+      rel.tol=0.0001,
+      method="SANN",
       # starts=c(2),
       K=50,
       output="density",unitsOut="kmsq"
