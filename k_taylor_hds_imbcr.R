@@ -174,6 +174,68 @@ calc_dist_bins <- function(df=NULL, p=0.90, breaks=10){
     return(list(distance_breaks=bin_intervals,processed_data=df))
   }
 }
+#' summarize transect data and metadata by year (with list comprehension)
+#' @export
+pool_by_transect_year <- function(x=NULL, df=NULL, breaks=distance_breaks){
+  breaks <- length(distance_breaks)
+  transect_year_summaries <- data.frame()
+  # summarize focal_transect_year by breaking into counts within
+  # distance classes and binding effort, year, and covs calculated
+  # at the transect scale
+  years <- sort(unique(df[df[,transect_fieldname(df)] == x, "year"]))
+  for(year in years){
+    focal_transect_year <- df[
+      df[,transect_fieldname(df)] == x & df$year == year, ]
+    # pre-allocate zeros for all bins
+    distances <- rep(0,(breaks-1))
+      names(distances) <- 1:(breaks-1)
+    # build a pivot table of observed bins
+    dist_classes <- sort(focal_transect_year$dist_class) # drop NA's
+      dist_classes <- table(as.numeric(dist_classes))
+    # merge pivot with pre-allocate table and add an NA bin
+    distances[names(distances) %in% names(dist_classes)] <- dist_classes
+      distances <- append(distances,
+                          sum(is.na(focal_transect_year$dist_class)))
+    distances <- as.data.frame(matrix(distances,nrow=1))
+      names(distances) <- paste("distance_",c(1:(breaks-1),"NA"),sep="")
+    # summarize each of the covs across the transect-year
+    summary_covs <- matrix(rep(NA,length(covs)),nrow=1)
+      colnames(summary_covs) <- covs
+    for(cov in covs){
+      # some covs are year-specific; filter accordingly
+      cov_year <- names(focal_transect_year)[
+          grepl(names(focal_transect_year),pattern=cov)
+        ]
+      if(length(cov_year)>1){
+          cov_year <- cov_year[grepl(cov_year,pattern=as.character(year))]
+        }
+      summary_covs[,cov_year] <- summary_fun(
+          focal_transect_year[,cov_year],
+          na.rm=T
+        )
+    }
+    # post-process pooled transect-year
+    # keep most of our vars intact, but drop those that lack meaning at
+    # the transect scale or that we have summarized above
+    meta_vars <- colnames(df)[!colnames(df) %in%
+              c(transect_fieldname(df), "year", "dist_class",
+                distance_fieldname(df), "timeperiod", "point", "how",
+                  "FID", "visual", "migrant", "cl_count", "cl_id",
+                    "ptvisitzone", "ptvisiteasting", "ptvisitnorthing",
+                      "rank", covs)]
+    # build our summary transect-year data.frame
+    focal_transect_year <- cbind(
+        focal_transect_year[1, meta_vars],
+        data.frame(transectnum=x, year=year),
+        distances,
+        summary_covs
+      )
+    # merge into our annual summary table
+    transect_year_summaries <-
+      rbind(transect_year_summaries,focal_transect_year)
+  }
+  return(transect_year_summaries)
+}
 #' accepts a formatted IMBCR data.frame and builds an unmarkedFrameGDS
 #' object from it
 #' @export
@@ -204,67 +266,6 @@ build_unmarked_gds <- function(df=NULL,
                           )
   } else {
     distance_classes = append(1:length(distance_breaks)-1, NA)
-  }
-  # local functions (with list comprehension)
-  pool_by_transect_year <- function(x=NULL, df=NULL, breaks=distance_breaks){
-    breaks <- length(distance_breaks)
-    transect_year_summaries <- data.frame()
-    # summarize focal_transect_year by breaking into counts within
-    # distance classes and binding effort, year, and covs calculated
-    # at the transect scale
-    years <- sort(unique(df[df[,transect_fieldname(df)] == x, "year"]))
-    for(year in years){
-      focal_transect_year <- df[
-        df[,transect_fieldname(df)] == x & df$year == year, ]
-      # pre-allocate zeros for all bins
-      distances <- rep(0,(breaks-1))
-        names(distances) <- 1:(breaks-1)
-      # build a pivot table of observed bins
-      dist_classes <- sort(focal_transect_year$dist_class) # drop NA's
-        dist_classes <- table(as.numeric(dist_classes))
-      # merge pivot with pre-allocate table and add an NA bin
-      distances[names(distances) %in% names(dist_classes)] <- dist_classes
-        distances <- append(distances,
-                            sum(is.na(focal_transect_year$dist_class)))
-      distances <- as.data.frame(matrix(distances,nrow=1))
-        names(distances) <- paste("distance_",c(1:(breaks-1),"NA"),sep="")
-      # summarize each of the covs across the transect-year
-      summary_covs <- matrix(rep(NA,length(covs)),nrow=1)
-        colnames(summary_covs) <- covs
-      for(cov in covs){
-        # some covs are year-specific; filter accordingly
-        cov_year <- names(focal_transect_year)[
-            grepl(names(focal_transect_year),pattern=cov)
-          ]
-        if(length(cov_year)>1){
-            cov_year <- cov_year[grepl(cov_year,pattern=as.character(year))]
-          }
-        summary_covs[,cov_year] <- summary_fun(
-            focal_transect_year[,cov_year],
-            na.rm=T
-          )
-      }
-      # post-process pooled transect-year
-      # keep most of our vars intact, but drop those that lack meaning at
-      # the transect scale or that we have summarized above
-      meta_vars <- colnames(df)[!colnames(df) %in%
-                c(transect_fieldname(df), "year", "dist_class",
-                  distance_fieldname(df), "timeperiod", "point", "how",
-                    "FID", "visual", "migrant", "cl_count", "cl_id",
-                      "ptvisitzone", "ptvisiteasting", "ptvisitnorthing",
-                        "rank", covs)]
-      # build our summary transect-year data.frame
-      focal_transect_year <- cbind(
-          focal_transect_year[1, meta_vars],
-          data.frame(transectnum=x, year=year),
-          distances,
-          summary_covs
-        )
-      # merge into our annual summary table
-      transect_year_summaries <-
-        rbind(transect_year_summaries,focal_transect_year)
-    }
-    return(transect_year_summaries)
   }
   # parse our imbcr data.frame into transect-level summaries
   # with unmarked::gdistsamp comprehension
