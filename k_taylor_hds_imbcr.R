@@ -6,8 +6,7 @@
 #
 
 #
-# Todos : (1) make sure that something screwy isn't happening with the distance
-#         bins; (2) test a standard implementation of distsamp with pooling
+# Todos : (2) test a standard implementation of distsamp with pooling
 #         instead of gdistsamp; (3) test an implementation of station-level
 #         distsamp; (4) test an implementation of gmultmix.
 #
@@ -57,7 +56,8 @@ timeperiod_fieldname <- function(df=NULL){
 scrub_imbcr_df <- function(df,
                            allow_duplicate_timeperiods=F,
                            four_letter_code=NULL,
-                           back_fill_all_na=T){
+                           back_fill_all_na=F,
+                           drop_all_na=F){
   # throw-out any lurking 88 values, count before start values, and
   # -1 distance observations
   df <- df[!df@data[, timeperiod_fieldname(df)] == 88, ]
@@ -84,7 +84,7 @@ scrub_imbcr_df <- function(df,
                     )
                   ]), ]
   # allow multiple detections at stations
-  detected     <- df[detected, ]
+  detected <- df[detected, ]
   # take the merge of detections and non-duplicated, non-detections as
   # our new data.frame
   transect_heuristic <- function(x=NULL){
@@ -100,6 +100,10 @@ scrub_imbcr_df <- function(df,
   if(!back_fill_all_na){
     valid_transects <- unique(detected@data[,transect_fieldname(df)])
     df <- df[df@data[,transect_fieldname(df)] %in% valid_transects,]
+  }
+  # zero-inflation fix (2) : drop all NA values
+  if(drop_all_na){
+    df <- detected
   }
   df[order(sqrt(as.numeric(df$transectnum))+sqrt(df$year)+sqrt(df$point)),]
 }
@@ -174,8 +178,10 @@ calc_dist_bins <- function(df=NULL, p=0.90, breaks=10){
     return(list(distance_breaks=bin_intervals,processed_data=df))
   }
 }
-#' summarize transect data and metadata by year (with list comprehension)
-#' @export
+#' hidden function that summarizes imbcr transect covariate data and metadata
+#' by year (with list comprehension). This allows you to calculate covariates
+#' at the IMBCR station level and then pool (summarize) the observations by
+#' transect and year
 pool_by_transect_year <- function(x=NULL, df=NULL, breaks=NULL, covs=NULL,
                                   summary_fun=median){
   breaks <- length(breaks)
@@ -238,7 +244,7 @@ pool_by_transect_year <- function(x=NULL, df=NULL, breaks=NULL, covs=NULL,
   return(transect_year_summaries)
 }
 #' accepts a formatted IMBCR data.frame and builds an unmarkedFrameGDS
-#' object from it
+#' data.frame from it
 #' @export
 build_unmarked_gds <- function(df=NULL,
                                numPrimary=1,
@@ -311,7 +317,8 @@ witu_imbcr_observations <-
        )[1]
     ),
     four_letter_code="WITU",
-    back_fill_all_na=F # only keep NA's along transects with >= 1 observations
+    back_fill_all_na=F  # keep only NA values for transects with >= 1 spp det
+    #back_fill_all_na=T # keep all NA values
   )
 
 #
@@ -326,28 +333,25 @@ witu_imbcr_observations <-
 # 2000m, 2400m, and 3200m.
 #
 # The habitat variables we will test include : 1.) Year, 2.) Latitude,
-# 3.) Longitude, 4.) Shortgrass (composition/configuration), 5.) Mixedgrass
-# (composition/configuration), 6.) Tallgrass (composition/configuration), 7.)
-# Sagebrush / Ponderosa Woodland (composition/configuration),
-# 8.) Juniper Woodland (composition/configuration), 9.) Forest (composition/
-# configuration)
+# 3.) Longitude, 4.) Shortgrass prairie (composition/configuration), 5.) Mixedg
+# rass prairie (composition/configuration), 6.) Tallgrass prairie (composition/
+# configuration), 7.) Sagebrush shrubland composition/configuration), 8.) Ponde
+# rosa/Juniper Woodland (composition/configuration), and 9.) Forest (compositio
+# n/configuration)
+
 #
-# Total variables : (10 scales) * 2(composition+configuration metrics) * 6(
-# plant communities) + Year + Lat + Lon = 123 variables tested step-wise, by
-# scale, using AIC. That's 2^(15) = 32,768 models to test, per-scale.
+# Total variables : (10 scales) * 2(composition+configuration metrics) * 9(
+# plant communities) + Year + Lat + Lon = 163 variables tested step-wise, by
+# scale, using AIC. That's 2^(19) = 524,288 models to test, per-scale.
 #
 
-# skip covariates for now -- we will use year, latitude, and longitude for
-# model testing (below)
+
 
 # calculate distance bins
-# breaks <- seq(0,350,length.out=6)
-# breaks <- c(0,20,40,60,80,100)
-
 breaks <- append(0,as.numeric(quantile(as.numeric(
     witu_imbcr_observations$radialdistance),
     na.rm=T,
-    probs=seq(0.1,0.85,length.out=9))
+    probs=seq(0.05,0.90,length.out=9))
   ))
 
 witu_imbcr_observations <- calc_dist_bins(
@@ -364,40 +368,6 @@ witu_imbcr_observations <- calc_day_of_year(witu_imbcr_observations)
 witu_imbcr_observations <- calc_transect_effort(witu_imbcr_observations)
 
 #
-# hack -- look for parameter starting values using a subset of transects
-# that don't suffer from NA inflation
-#
-calc_transect_na_density <- function(s=NULL, heurstic=NULL){
-  in_transects <- test_heuristic <- vector();
-  heurstic <- if(is.null(heurstic)) 9999 else heurstic
-  for(t in unique(s$transectnum)){
-    focal <- sum(is.na(
-        s@data[s$transectnum == t,
-        'radialdistance']
-      )) /
-      median(s@data[s$transectnum == t,
-      'effort'])
-    test_heuristic <- append(test_heuristic, focal);
-    # heurstic from quantile()
-    if(focal < heurstic ){
-      in_transects <- append(in_transects,t)
-    }
-  }
-  return(list(transects=in_transects,na_density=test_heuristic))
-}
-
-test <- calc_transect_na_density(witu_imbcr_observations)
-test <- calc_transect_na_density(
-    s=witu_imbcr_observations,
-    heurstic=quantile(test$na_density,p=0.35)
-  )
-
-# downsample transects with hi na densities
-ds_witu_imbcr_observations <- witu_imbcr_observations[
-    witu_imbcr_observations$transectnum %in% test$transects,
-  ]
-
-#
 # Fit the HDS model of Royle (2004), using the implementation
 # from the 'unmarked' package. We are using gdistsamp here, but
 # we are not using the availability sub-model or the negative binomial
@@ -405,62 +375,51 @@ ds_witu_imbcr_observations <- witu_imbcr_observations[
 # the model of Royle (2004) [distsamp].
 #
 
-ds_umdf <- build_unmarked_gds(
-    df=ds_witu_imbcr_observations,
+
+
+# clean up the unmarked data.frame. prefer dropping the NA
+# bin here (rather than in the imbcr data.frame), because here
+# we still have an accurate account of effort
+
+scrub_unmarked_dataframe <- function(x=NULL){
+  row.names(x@y) <- NULL
+  row.names(x@siteCovs) <- NULL
+  x@y <- x@y[,!grepl(colnames(x@y), pattern="_NA")]
+  x@obsToY <- matrix(x@obsToY[,1:ncol(x@y)],nrow=1)
+  # normalize our site covariates
+  start <- which(grepl(colnames(umdf@siteCovs),pattern="transect"))+1
+  umdf@siteCovs[,start:ncol(umdf@siteCovs)] <-
+    scale(umdf@siteCovs[,start:ncol(umdf@siteCovs)])
+  return(x)
+}
+
+umdf <- scrub_unmarked_dataframe(build_unmarked_gds(
+    df=witu_imbcr_observations,
     covs=NULL,
     distance_breaks=breaks
+  ))
+
+intercept_m <- unmarked::gdistsamp(
+    ~1+offset(log(effort)), # abundance
+    ~1,                     # availability
+    ~1,                     # detection
+    data=umdf,
+    keyfun="halfnorm",
+    mixture="NB",
+    se=T,
+    K=50,
   )
 
-# clean up the umdf and check our NA bin density relative
-# to the other bins
-
-row.names(ds_umdf@y) <- NULL
-row.names(ds_umdf@siteCovs) <- NULL
-
-summary(ds_umdf)
-colSums(ds_umdf@y)/max(colSums(ds_umdf@y))
-
-fit_null <- function(starts=runif(n=6,min=0,max=5),ds_umdf=ds_umdf){
-  intercept_m <- try(unmarked::gdistsamp(
-      ~year+lat+lon+offset(log(effort)),      # abundance covs
-      ~1,                                     # availability covs
-      ~year+doy,                              # detection covs
-      data=ds_umdf,keyfun="uniform",mixture="P",
-      starts=starts,
-      rel.tol=0.0001,
-      method="SANN",
-      # starts=c(2),
-      K=50,
-      output="density",unitsOut="kmsq"
-    ))
-  if(class(intercept_m) != "try-error"){
-    return(starts)
-  } else {
-    return(intercept_m)
-  }
-}
-
-cl <- parallel::makeCluster(4)
-
-par_fit_null <- function(){
-  starts <- parLapply(
-      cl,
-      lapply(rep(6,999),FUN=runif,min=0,max=5), # meh
-      fun=fit_null,
-      ds_umdf=ds_umdf
-    )
-  return(list(starts=starts,
-         match=unlist(lapply(starts,FUN=function(x) class(x)!="try-error"))))
-}
-
-match <- par_fit_null()
-
-while(sum(match$match)==0){
-  match <- par_fit_null()
-}
-
-parallel::endCluster(cl)
-print(match$starts[match$match])
+poly_space_time_m <- unmarked::gdistsamp(
+    ~poly(year,2)+poly(lat,3)+poly(lon,3)+offset(log(effort)), # abundance
+    ~1,                                                        # availability
+    ~poly(year,2)+doy,                                         # detection
+    data=umdf,
+    keyfun="halfnorm",
+    mixture="NB",
+    se=T,
+    K=50,
+  )
 
 #
 # Project our model across the extent of our input raster space
