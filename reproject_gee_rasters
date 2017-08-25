@@ -19,28 +19,47 @@ require(raster)
 
 beginCluster(n=2)
 rasterOptions(tmpdir="/home/ktaylora/r_raster_tmp")
-template <- "/global_workspace/ring_necked_pheasant_imbcr_models/raster/2016_crp_107x107.tif"
 
 #
 # local function declarations
 #
 
 reproject_raster <- function(r=NULL,template=NULL){
-  if(!file.exists(template)){
-    stop("template= file doesn't exist")
+  raster_proj   <- NULL
+  template_proj <- NULL
+  if(is.null(template)){
+    warning("no template raster provided -- faking one with EPSG:2163")
+    template <- CRS(projection("+init=epsg:2163"))
+    template_proj <- as.character(template)
   }
   if(!inherits(r,"Raster")){
     r <- raster::raster(r)
+    raster_proj <- as.character(CRS(projection(r)))
   }
   # fixed raster template object we are projecting "to"
-  if(!inherits(template,"Raster")){
+  if(inherits(template,"Raster")){
     template <- raster::raster(template)
+    template_proj <- as.character(CRS(projection(template)))
   }
-  # reproject, if needed
-  if(raster::projection(r) != raster::projection(template)){
+  # reproject if needed
+  if(raster_proj != template_proj){
     cat(" -- reprojecting:",names(r),"\n")
-    reprojected <- raster::projectRaster(r, crs=CRS(projection(template)),progress='text')
-      final <- raster::projectRaster(reprojected,to=template, progress='text')
+    if(inherits(template, "Raster")){
+      final <- raster::projectRaster(from=raster::projectRaster(
+            r,
+            crs=CRS(projection(template)),
+            progress='text'
+          ),
+          to=template,
+          progress='text'
+        )
+    } else {
+      final <- raster::projectRaster(
+          from=r,
+          crs=template,
+          progress='text'
+        )
+    }
   } else {
     final <- r
   }
@@ -54,7 +73,6 @@ reproject_raster <- function(r=NULL,template=NULL){
 using_directory <- which(grepl(tolower(argv),pattern="-d $"))
 using_template  <- which(grepl(tolower(argv),pattern="-t $"))
 using_destfile  <- which(grepl(tolower(argv),pattern="-o $"))
-      dest_file <- "merged.tif"
 
 if(sum(using_directory)>0){
   rasters <- list.files(argv[using_directory+1], pattern="tif$", full.names=T)
@@ -89,7 +107,7 @@ if(sum(using_directory)>0){
 if(sum(using_template)>0){
   template <- argv[using_template+1]
 } else {
-  template <- "/home/ktaylora/Workspace/nass/2016_crp_107x107.tif"
+  template <- NULL
 }
 # stepwise reproject each raster segment to the CRS and resolution of
 # our target template raster data
